@@ -31,8 +31,9 @@ __pycache__/
 ###
 
 ### Output
-**/output/*
-!**/output/bindev/*.tex
+**/output/**
+!output/bindev/
+!output/bindev/*.tex
 ###
 
 ### I think all of these are created when converting a .tex into .pdf

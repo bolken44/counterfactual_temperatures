@@ -1,0 +1,27 @@
+\clearpage
+\thispagestyle{empty}
+\newgeometry{top=0.1in, bottom=0.1in, left=0.4in, right=0.4in}
+\begin{landscape}
+\begin{table}[htb]
+\centering
+\caption{Comparison of Different \texttt{cftemp} Methods - Terms in the Bias Formula}
+\label{cftemp-comp}
+\begin{threeparttable}
+\scalebox{0.75}{
+\begin{tabular}{llcccccccccccccc}
+\toprule
+ & & \multicolumn{7}{c}{Under 10 Bin} & \multicolumn{7}{c}{Over 90 Bin} \\
+\cmidrule(lr){3-9} \cmidrule(lr){10-16}
+Dataset & \multicolumn{1}{c}{Method} & \(\text{Term 1}_C\) & \(\text{Term 2}_C\) & \(\text{Term 3}_C\) & \(\text{Term 4}_C\) & \(\text{Num}_C\) & \(\text{Denom}_C\) & Bias & \(\text{Term 1}_H\) & \(\text{Term 2}_H\) & \(\text{Term 3}_H\) & \(\text{Term 4}_H\) & \(\text{Num}_H\) & \(\text{Denom}_H\) & Bias \\
+\midrule
+ \midrule \multirow{8}{*}{PRISM (1970-2019)} & No correction & .0119507 & .3916537 & .0003463 & .0597332 & .0046598 & .002004 & 2.334615 & .167696 & .0597332 & .0003463 & .3916537 & .0098814 & .002004 & 4.950643 \\ & State-Year Fixed Effects & .0117417 & .0334306 & 9.13e-06 & .0184573 & .0003924 & .0019345 & .0268302 & .1647543 & .0184573 & 9.13e-06 & .0334306 & .0030406 & .0019345 & .2079203 \\ & With 3 Lags & .0117808 & .3225177 & .0002687 & .0562721 & .0037844 & .0019689 & 1.832512 & .167133 & .0562721 & .0002687 & .3225177 & .0093183 & .0019689 & 4.512157 \\ & County-Specific Linear Trends & .0109897 & -5.20e-16 & -2.51e-34 & 3.26e-17 & -5.71e-18 & .0018007 & 5.87e-31 & .1638555 & 3.26e-17 & -2.51e-34 & -5.20e-16 & 5.35e-18 & .0018007 & -5.49e-31 \\ & County-5 Year Fixed Effects & .0109902 & .0218514 & 2.33e-07 & .0007207 & .0002402 & .001801 & .0013546 & .1638751 & .0007207 & 2.33e-07 & .0218514 & .0001181 & .001801 & .0006661 \\ & Lin. in Year & .0113508 & .4139182 & .000207 & .0337844 & .0046913 & .0019099 & 1.932745 & .1682637 & .0337844 & .000207 & .4139182 & .005599 & .0019099 & 2.306699 \\ & Chebyshev & .0110974 & .0332036 & 2.52e-07 & .0005121 & .0003685 & .0018264 & .0788953 & .1645828 & .0005121 & 2.52e-07 & .0332036 & .0000843 & .0018264 & .0180442 \\ & Splines in Year & .0118284 & .3384566 & .0002328 & .046473 & .0039926 & .0019754 & 1.790589 & .1670127 & .046473 & .0002328 & .3384566 & .0076828 & .0019754 & 3.445573 \\ & Aggregate \(\pm\)5 Years & .0113508 & .4139182 & .000207 & .0337844 & .0046913 & .0019099 & 1.969004 & .1682637 & .0337844 & .000207 & .4139182 & .005599 & .0019099 & 2.349973 \\
+\hline \hline
+\end{tabular}
+}
+\begin{tablenotes}
+\footnotesize \textit{Notes:} All temperatures are in \degree F. The sample period is 1970-2019 for ERA Land 5, 1950-2019 for PRISM, and 1968-2016 for GHCN.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+\end{landscape}
+\restoregeometry
