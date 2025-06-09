@@ -1,0 +1,49 @@
+### Ignore all files within any Data folder
+**/data/*
+**/log/*
+###
+
+### Python virtual environment
+.venv/
+__pycache__/
+.index
+.env
+###
+
+### Also ignore any files with extensions that look like data files
+*.xlsx
+*.dta
+*.csv
+*.db
+###
+
+### Ignore any files which are probably log files
+*.log
+*.msg
+*.txt
+*.text
+!requirements.txt
+
+# Stata log format
+*.smcl
+*.sthlp
+*.Rout
+###
+
+### Output
+**/output/*
+!**/output/bindev/*.tex
+###
+
+### I think all of these are created when converting a .tex into .pdf
+*.aux
+*.out
+*.gz
+*.fdb_latexmk
+###
+
+### Random other files automatically created by mac
+._.*
+._*
+.DS_Store
+###
