@@ -10,10 +10,14 @@ from geopy.distance import geodesic
 from tqdm import tqdm
 import os
 
-path = "/proj/pbolken/climate/Haru/"
+path = "/orcd/pool/003/hnaka24/climate/"
 data = path + "data/"
-ghcn = data + "ghcnd_all/ghcnd_all/"
+ghcn = data + "ghcnd_all/"
 # ghcn_csv = data + "ghcnd_csv/"
+
+task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID"))
+num_cores = int(os.environ.get("SLURM_CPUS_PER_TASK", 1))
+total_jobs = 300
 
 ################################################################################
 ### Metadata
@@ -265,6 +269,14 @@ counties = pd.read_csv(f"{data}fips_county.csv")
 counties['Fips'] = counties['Fips'].replace(46102, 46113)
 counties = counties[['Fips', 'Latitude', 'Longitude']]
 counties = counties.rename(columns={'Fips': 'fips', 'Latitude': 'latcentroid', 'Longitude': 'longcentroid'})
+
+# Retrieve the number of pages
+pages_per_job = len(counties)// total_jobs
+extra_pages = len(counties)% total_jobs  # remainder
+start_idx = (task_id - 1) * pages_per_job + min(task_id - 1, extra_pages)
+end_idx = start_idx + pages_per_job + (1 if task_id <= extra_pages else 0)
+
+counties = counties.iloc[start_idx:end_idx]
 loop = tqdm(total=len(counties), desc="Processing counties")
 
 # Loop through all counties
@@ -389,5 +401,5 @@ final_df['day'] = final_df['date'].dt.day
 
 final_df = final_df[(final_df['year'] >= 1968) & (final_df['year'] <= 2016)]
 
-final_df.to_stata(f"{data}ghcn_countylevel_1968_2016.dta", write_index=False)
+final_df.to_stata(f"{data}ghcn_countylevel_1968_2016_{task_id}.dta", write_index=False)
 print(f"County-day level data saved to {data}ghcn_countylevel_1968_2016.dta.")
