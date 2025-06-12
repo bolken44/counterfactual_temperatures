@@ -26,9 +26,9 @@ display "Current time: " c(current_date) " " c(current_time)
 adopath + "${home}/cftemp"
 run "${home}/cftemp/cftemp_sim.ado"
 
-ssc install ereplace, replace
+/* ssc install ereplace, replace
 ssc install reghdfe, replace
-ssc install ftools, replace
+ssc install ftools, replace */
 
 * Declare which one
 local sources "era5_F schlenker_F ghcn_ext prism_1970"

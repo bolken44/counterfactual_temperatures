@@ -2,10 +2,10 @@
 #SBATCH --job-name=bias_table
 #SBATCH --ntasks=1                        # number of scripts that can be run simultaneously
 #SBATCH --cpus-per-task=4                 # Each script gets 8 CPU cores
-#SBATCH --array=1-12
+#SBATCH --array=1-5,7,9-12
 
 #SBATCH --mem=80GB                        # Total memory allocation
-#SBATCH --time=12:00:00                   # Adjust time as needed
+#SBATCH --time=72:00:00                   # Adjust time as needed
 #SBATCH --partition=sched_mit_econ
 
 #SBATCH --mail-type=all                  # send email on job start, end and fault
