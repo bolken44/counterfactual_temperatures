@@ -324,7 +324,7 @@ local ub_str = cond(`ub' < 0, "n`=abs(`ub')'", "`ub'") //to name the bin real_ov
 local names_bins = "`names_bins' over_`ub_str'"
 
 ******************************* Simulation 1 coefficient and SE
-local compare = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "sim")))))
+/* local compare = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "sim")))))
 
 if inlist("`method'", "naive", "stateyearFE", "lag3", "trends", "5year", "year") {
       cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme
@@ -339,7 +339,7 @@ else {
             local sim1_coef_`bin' = ""
             local sim1_ci_`bin' = ""
       }
-}
+} */
 
 ******************************* Simulation 2 coefficient and SE, trend in Y
 local compare = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "cftemp"))))) //different from sim 1 compare! cftemp instead of sim
@@ -349,6 +349,8 @@ cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(linear
 foreach bin in under_`lb_str' over_`ub_str' {
       local sim2_coef_`bin' = "${coef_1_`bin'}"
       local sim2_ci_`bin' = "[${p25_1_`bin'}, ${p975_1_`bin'}]"
+      local sim2_tstat_`bin' = "${tstat_1_`bin'}"
+      local sim2_tstat_ci_`bin' = "[${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
 
       local bias_`bin' = "" //initialize
       local slope_`bin' = ${slope_`bin'}
@@ -426,8 +428,8 @@ foreach bin in under_`lb_str' over_`ub_str' {
       local second_row = " &"
 
       * Fill in
-      local `source'_row_`bin' = "``source'_row_`bin'' & `sim1_coef_`bin'' & `sim2_coef_`bin'' & ${slope_`bin'_str} & ${resid_`bin'_str} & ${coef_1_Y_str} & `bias2_`bin''"
-      local second_row = "`second_row' & `sim1_ci_`bin'' & `sim2_ci_`bin'' & ${trend_ci_`bin'} & &"
+      local `source'_row_`bin' = "``source'_row_`bin'' & `sim2_coef_`bin'' & `sim2_tstat_`bin'' & ${slope_`bin'_str} & ${resid_`bin'_str} & ${coef_1_Y_str} & `bias2_`bin''" // & `sim1_coef_`bin''
+      local second_row = "`second_row' & `sim2_ci_`bin'' & `sim2_tstat_ci_`bin'' & ${trend_ci_`bin'} & &" // & `sim1_ci_`bin''
       
       * Conjoin first and second rows
       local `source'_row_`bin' = "``source'_row_`bin'' \\ `second_row' \\"
@@ -435,8 +437,8 @@ foreach bin in under_`lb_str' over_`ub_str' {
 
 
 ******************************* Parallel Table
-local row = "`row' & `title_`method''"
-dis "`row'"
+/* local row = "`row' & `title_`method''"
+dis "`row'" */
 
 * Large T case
 /* local formula = "Dataset & \multicolumn{1}{c}{Method}& \(\omega_C\) & \(\omega_C^2\) & \(\omega_H^2 \frac{\sigma_{e_c}^2}{\sigma_{e_H}^2}\) & \(\frac{\sigma_{e_c}^2}{\sigma_{T_0}^2}\) & Bias & \(\omega_H\) & \(\omega^2_H\) & \(\omega^2_C\) \(\frac{\sigma^2_{e_H}}{\sigma^2_{e_C}}\) & \(\frac{\sigma^2_{e_H}}{\sigma^2_{T_0}}\) & Bias \\"
@@ -445,7 +447,7 @@ foreach bin in under_`lb_str' over_`ub_str' {
 } */
 
 * Finite T case
-local formula = "Dataset & \multicolumn{1}{c}{Method} & \(\text{Term 1}_C\) & \(\text{Term 2}_C\) & \(\text{Term 3}_C\) & \(\text{Term 4}_C\) & \(\text{Num}_C\) & \(\text{Denom}_C\) & Bias & \(\text{Term 1}_H\) & \(\text{Term 2}_H\) & \(\text{Term 3}_H\) & \(\text{Term 4}_H\) & \(\text{Num}_H\) & \(\text{Denom}_H\) & Bias \\"
+/* local formula = "Dataset & \multicolumn{1}{c}{Method} & \(\text{Term 1}_C\) & \(\text{Term 2}_C\) & \(\text{Term 3}_C\) & \(\text{Term 4}_C\) & \(\text{Num}_C\) & \(\text{Denom}_C\) & Bias & \(\text{Term 1}_H\) & \(\text{Term 2}_H\) & \(\text{Term 3}_H\) & \(\text{Term 4}_H\) & \(\text{Num}_H\) & \(\text{Denom}_H\) & Bias \\"
 foreach bin in C H {
       local name = cond("`bin'" == "C", "under_`lb_str'", "over_`ub_str'")
 
@@ -454,9 +456,9 @@ foreach bin in C H {
       }
 
       local row = "`row' & `num_`bin'1' & `num_`bin'2' & `num_`bin'3' & `num_`bin'4' & `num_`bin'_all' & `denom_`bin'' & `bias2_`name''"
-}
+} */
 
-local row = "`row' \\"
+/* local row = "`row' \\" */
 
 local `source'_row_under_`lb_str' = "\midrule \multirow{50}{*}{\shortstack{`title_`source'' \\ \(\sigma^2_{T_0} = ${sigma2_T0_str}\)}} & \textit{Under 10 Bin} \\ ``source'_row_under_`lb_str''"
 
