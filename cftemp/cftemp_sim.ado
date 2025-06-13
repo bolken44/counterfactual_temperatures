@@ -12,7 +12,7 @@ cap prog drop cftemp_sim
 program define cftemp_sim
 
       ******************************* Syntax
-      syntax varlist(min=3 max=3) [, simulate(real 1000) option(real 2) outcome(string) binsize(real 5) lb(real -10) ub(real 35) omit(real 4) aweights(varlist) fe(string) cluster(varlist) control(string) compare(string) method(string) graph(string) if(string) extreme effect(real 0)]
+      syntax varlist(min=3 max=3) [, simulate(real 1000) option(real 2) outcome(string) binsize(real 5) lb(real -10) ub(real 35) omit(real 4) aweights(varlist) fe(string) cluster(varlist) control(string) compare(string) method(string) graph(string) if(string) extreme bias effect(real 0)]
 
       ** Parse variables from syntax. The variables must be in this order
       local temp  : word 1 of `varlist'
@@ -447,7 +447,7 @@ program define cftemp_sim
                   }
 
                   * compute trends on Y
-                  if `option' == 2 {
+                  if `option' == 2 & "`bias'" != "" {
                         
                         tempfile save
                         save `save', replace
@@ -510,7 +510,7 @@ program define cftemp_sim
             }
 
             * Bias Table
-            if `option' == 2 {
+            if `option' == 2 & "`bias'" != "" {
                   
                   // save omega Y
                   _pctile trend_Y, nq(1000)
