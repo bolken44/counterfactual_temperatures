@@ -31,8 +31,16 @@ __pycache__/
 ###
 
 ### Output
-**/output/**
+# Ignore everything under output/
+output/**
+
+# Except bindev subfolder
 !output/bindev/
+
+# Ignore that specific .tex file
+output/bindev/cftemp_bias_formula_new.tex
+
+# Allow all other .tex files in bindev
 !output/bindev/*.tex
 ###
 

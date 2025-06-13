@@ -1,0 +1,23 @@
+\clearpage
+\thispagestyle{empty}
+\begin{table}[htb]
+\centering
+\caption{Comparison of \texttt{cftemp} Methods Under Higher Order Trends (PRISM (1970-2019))}
+\label{cftemp-comp}
+\begin{threeparttable}
+\scalebox{0.75}{
+\begin{tabular}{llccc}
+\toprule
+Dataset & \multicolumn{1}{c}{Method} & Linear & Quadratic & Cubic \\
+\midrule
+\midrule \multirow{50}{*}{PRISM (1970-2019)} & \textit{Under 10 Bin} \\  & \multirow{2}{*}{No correction} & 3.98517 & 165.028 & 5957.422 \\  & & [2.16697, 5.72092] & [70.18073, 253.8136] & [1838.675, 10481] \\ & \multirow{2}{*}{State-Year Fixed Effects} & 1.69817 & 71.13818 & 2995.323 \\  & & [-1.985, 5.42923] & [-125.0697, 278.6486] & [-6417.37, 12591.9] \\ & \multirow{2}{*}{With 3 Lags} & 3.13542 & 139.9659 & 4972.161 \\  & & [1.22037, 5.08721] & [42.56731, 238.5877] & [431.3707, 9654.441] \\ & \multirow{2}{*}{County-Specific Linear Trends} & .03093 & -40.2264 & -3364.61 \\  & & [-1.80963, 1.80995] & [-136.0488, 55.04284] & [-7746.114, 1129.447] \\ & \multirow{2}{*}{County-5 Year Fixed Effects} & .2427 & 20.1212 & 1136.234 \\  & & [-1.86641, 2.066] & [-76.37595, 119.7239] & [-4180.681, 5752.874] \\ & \multirow{2}{*}{Lin. in Year} & 4.25024 & 172.2688 & 6359.497 \\  & & [2.50905, 6.18083] & [83.30667, 268.9255] & [1763.364, 10753.3] \\ & \multirow{2}{*}{Chebyshev} & .32642 & -23.60303 & -2253.725 \\  & & [-1.69087, 2.21012] & [-109.8678, 76.44913] & [-6909.213, 2293.742] \\ & \multirow{2}{*}{Splines in Year} & 3.57392 & 139.3869 & 4719.514 \\  & & [1.62669, 5.25028] & [49.33187, 229.797] & [128.0286, 9157.106] \\ & \multirow{2}{*}{Aggregate \(\pm\)5 Years} & 4.18575 & 174.3545 & 6193.53 \\  & & [2.41864, 5.91261] & [85.00334, 260.3961] & [1856.951, 10450.58] \\
+\cmidrule(lr){2-5}  & \textit{Over 90 Bin} \\
+ & \multirow{2}{*}{No correction} & 5.16477 & 261.8876 & 11730.57 \\  & & [-.35593, 10.99308] & [-10.58, 541.0756] & [-2128.976, 24022.99] \\ & \multirow{2}{*}{State-Year Fixed Effects} & 2.57147 & 126.9167 & 5569.388 \\  & & [-3.8474, 9.3221] & [-187.3736, 464.4606] & [-10905.24, 21519.48] \\ & \multirow{2}{*}{With 3 Lags} & 4.30915 & 237.8075 & 10248.13 \\  & & [-.9819, 9.31587] & [-28.27868, 516.372] & [-3797.67, 23700.97] \\ & \multirow{2}{*}{County-Specific Linear Trends} & -.32687 & 1.12274 & -459.3799 \\  & & [-5.62372, 5.50646] & [-291.3869, 297.4391] & [-13548.62, 12963.61] \\ & \multirow{2}{*}{County-5 Year Fixed Effects} & .035 & 8.86289 & 351.4489 \\  & & [-6.2919, 6.61025] & [-321.9876, 326.8272] & [-15003.68, 16810.2] \\ & \multirow{2}{*}{Lin. in Year} & 3.04238 & 152.9994 & 6648.473 \\  & & [-2.68097, 8.42084] & [-128.3912, 434.9196] & [-7350.022, 19606.96] \\ & \multirow{2}{*}{Chebyshev} & .2248 & -3.8727 & -1328.29 \\  & & [-5.49372, 5.64527] & [-298.7772, 283.1912] & [-14969.1, 12732.08] \\ & \multirow{2}{*}{Splines in Year} & 3.99377 & 201.0752 & 8349.169 \\  & & [-1.50298, 9.34703] & [-52.45226, 465.5038] & [-5315.054, 21700.15] \\ & \multirow{2}{*}{Aggregate \(\pm\)5 Years} & 2.61268 & 142.9959 & 6553.471 \\  & & [-2.69221, 8.09138] & [-110.8636, 412.7174] & [-6544.473, 19626.71] \\
+\hline \hline
+\end{tabular}
+}
+\begin{tablenotes}
+\footnotesize \textit{Notes:} All temperatures are in \degree F. The sample period is 1970-2019 for this version of PRISM.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
