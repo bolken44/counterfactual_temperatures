@@ -40,21 +40,21 @@ program define cftemp_sim
 
       * What is the trend in the outcome variable?
       if "`outcome'" != "" & strpos("`outcome'", ",") > 0 {    
-            local outcome_ff = substr("`outcome'", 1, strpos("`outcome'", ",") - 1)
+            local outcome_method = substr("`outcome'", 1, strpos("`outcome'", ",") - 1)
             local outcome_param = substr("`outcome'", strpos("`outcome'", ",") + 1, .)
       }
-      dis "`outcome_ff'"
+      dis "`outcome_method'"
       dis "`outcome_param'"
 
-      if "`outcome_ff'" == "" | strpos("`outcome_ff'", "lin") > 0 {
+      if "`outcome_method'" == "" | strpos("`outcome_method'", "lin") > 0 {
             local outcome_ff = cond(`outcome_param' == 0, "`time'", "`outcome_param' * `time' * `temp'")
             local base_ff = "`time'"
       }
-      if strpos("`outcome_ff'", "quad") > 0 {
-            local outcome_ff = "`outcome_param' * `time' * `time' * `temp'"
+      if strpos("`outcome_method'", "quad") > 0 {
+            local outcome_method = "`outcome_param' * `time' * `time' * `temp'"
             local base_ff = "`time' * `time'"
       }
-      if strpos("`outcome_ff'", "cubic") > 0 {
+      if strpos("`outcome_method'", "cubic") > 0 {
             local outcome_ff = "`outcome_param' * `time' * `time' * `time' * `temp'"
             local base_ff = "`time' * `time' * `time'"
       }
@@ -300,7 +300,8 @@ program define cftemp_sim
       gen varName = ""
       gen loop = .
       gen coef = .
-      gen sE = .
+      gen tstat = .
+      gen se = .
       gen varNum = .
       gen pValue = .
       gen trend_Y = .
@@ -437,9 +438,10 @@ program define cftemp_sim
 
                         qui lincom `var'
                         replace varName = "`var'" 		if _n == `x'
-                        replace varNum 	= `x'*100 		if _n == `x'
-                        replace coef 	= `r(estimate)' if _n == `x'
-                        replace sE 		= `r(se)' 		if _n == `x'
+                        replace varNum 	= `x'*`l' 		if _n == `x'
+                        replace coef 	= `r(estimate)'   if _n == `x'
+                        replace tstat	= `r(t)' 		if _n == `x'
+                        replace se        = `r(se)'         if _n == `x'
                         replace pValue 	= `r(p)' 		if _n == `x'
                         replace loop 	= `l'			if _n == `x'
 
@@ -495,18 +497,30 @@ program define cftemp_sim
 
             }
 
+            * save all simulation runs to folder
+            preserve
+            keep varName varNum coef se tstat pValue loop
+            gen method = "${method}"
+            gen source = "${source}"
+            duplicates drop
+            order source method varName varNum coef se tstat pValue loop
+            export delimited "${output}bindev/cftemp_${source}_`outcome_method'_${task}.csv", replace
+            restore
+
             * generate variables for plot legend:
             foreach var in `coef_bins' {
                   
-                  * coefficients by group
-                  gen meanCoef = coef
-                  replace meanCoef = . if varName != "`var'"
-                  _pctile meanCoef, nq(1000)
-                  local p25_`var' = `r(r25)'
-                  local p975_`var' = `r(r975)'
-                  local coef_`var' = `r(r500)'
+                  * coefficients and tstats
+                  foreach stat in coef tstat {
+                        gen meanCoef = `stat'
+                        replace meanCoef = . if varName != "`var'"
+                        _pctile meanCoef, nq(1000)
+                        local `stat'_p25_`var' = `r(r25)'
+                        local `stat'_p975_`var' = `r(r975)'
+                        local `stat'_p500_`var' = `r(r500)'
 
-                  drop meanCoef
+                        drop meanCoef
+                  }
             }
 
             * Bias Table
@@ -575,20 +589,21 @@ program define cftemp_sim
             gen variable`i' = _n
             replace variable`i' = . if variable`i' > `binnum'
             
-            foreach var in coef p25 p975 {
-                  gen `var'_`i' = .
+            foreach var in p500 p25 p975 {
+                  gen coef_`var'_`i' = .
                   local k = 1
                   foreach bin in `coef_bins' {
                         local place = cond(`k' >= `omit', `k' + 1, `k')
-                        replace `var'_`i' = ``var'_`bin'' if variable`i' == `place'
+                        replace coef_`var'_`i' = `coef_`var'_`bin'' if variable`i' == `place'
                         local k = `k' + 1
                   }
-                  replace `var'_`i' = 0 if variable`i' == `omit'
+                  replace coef_`var'_`i' = 0 if variable`i' == `omit'
 
                   * Store top and bottom bin as globals to include in table
-                  global `var'_`i'_under_`lb_str' = string(round(``var'_real_under_`lb_str'', 0.00001))
-                  global `var'_`i'_over_`ub_str' = string(round(``var'_real_over_`ub_str'', 0.00001))
-
+                  foreach stat in coef tstat {
+                        global `stat'_`var'_`i'_under_`lb_str' = string(round(``stat'_`var'_real_under_`lb_str'', 0.00001))
+                        global `stat'_`var'_`i'_over_`ub_str' = string(round(``stat'_`var'_real_over_`ub_str'', 0.00001))
+                  }
 
             }
 
@@ -605,11 +620,11 @@ program define cftemp_sim
 
             /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
 
-            graph tw (scatter coef_1 variable1, color("31 88 137")) (rcap p25_1 p975_1 variable1, color("31 88 137")) (scatter coef_2 variable2, color("155 52 58")) (rcap p25_2 p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
+            graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap p25_2 p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
       }
 
       if `version_num' == 1 {
-            graph tw (scatter coef_1 variable1, color("31 88 137")) (rcap p25_1 p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
+            graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
       }
 
       use `tempfile', clear

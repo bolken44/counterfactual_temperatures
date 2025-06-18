@@ -16,6 +16,7 @@ global weather "${pool}processed/"
 ** Get Slurm ID
 args task
 local task = real("`task'")
+global task = `task'
 
 log using "${home}log/bias_table/row_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
@@ -172,7 +173,7 @@ if "`source'" == "schlenker_F" {
       /* local data_month_schlenker_F_aggregate = "${weather}schlenker_monthly_UScounty_1950_2019_cftemp_F_aggregate.dta" */
 
       * PRISM yearly averages (1950-2019)
-      use "${pool}data/PRISM_Schlenker/appended.dta", clear
+      use "${pool}data/appended.dta", clear
       /* drop if year > 2019 | year < 1970 */
 
       replace tMax = (tMax * 9 / 5) + 32
@@ -258,6 +259,7 @@ local ub = 90
 
 //start of the loop
 global source = "`source'"
+global method = "`method'"
 
 local data_`source'_naive = "`data_`source'_year'"
 local data_`source'_trends = "`data_`source'_year'"
@@ -344,12 +346,12 @@ else {
 ******************************* Simulation 2 coefficient and SE, trend in Y
 local compare = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "cftemp"))))) //different from sim 1 compare! cftemp instead of sim
 
-cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme
+cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme bias
 
 foreach bin in under_`lb_str' over_`ub_str' {
-      local sim2_coef_`bin' = "${coef_1_`bin'}"
-      local sim2_ci_`bin' = "[${p25_1_`bin'}, ${p975_1_`bin'}]"
-      local sim2_tstat_`bin' = "${tstat_1_`bin'}"
+      local sim2_coef_`bin' = "${coef_p500_1_`bin'}"
+      local sim2_ci_`bin' = "[${coef_p25_1_`bin'}, ${coef_p975_1_`bin'}]"
+      local sim2_tstat_`bin' = "${tstat_p500_1_`bin'}"
       local sim2_tstat_ci_`bin' = "[${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
 
       local bias_`bin' = "" //initialize
