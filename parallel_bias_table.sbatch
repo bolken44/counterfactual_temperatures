@@ -2,7 +2,7 @@
 #SBATCH --job-name=bias_table
 #SBATCH --ntasks=1                        # number of scripts that can be run simultaneously
 #SBATCH --cpus-per-task=4                 # Each script gets 8 CPU cores
-#SBATCH --array=2,12,13-18,20, 30, 32
+#SBATCH --array=1-2
 
 #SBATCH --mem=160GB                        # Total memory allocation
 #SBATCH --time=10:30:00                   # Adjust time as needed

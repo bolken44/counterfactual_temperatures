@@ -346,7 +346,7 @@ else {
 ******************************* Simulation 2 coefficient and SE, trend in Y
 local compare = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "cftemp"))))) //different from sim 1 compare! cftemp instead of sim
 
-cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme bias
+cftemp_sim baselinePeriodTemp fips year, simulate(10) option(2) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme bias
 
 foreach bin in under_`lb_str' over_`ub_str' {
       local sim2_coef_`bin' = "${coef_p500_1_`bin'}"
@@ -362,7 +362,7 @@ local sigma_T0 = ${sigma_T0}
 
 ******************************* Implied bias (infinite T)
 * Under bin
-local denom_under_`lb_str' = (`slope_under_`lb_str'')^2 + ///
+/* local denom_under_`lb_str' = (`slope_under_`lb_str'')^2 + ///
                   ((`slope_over_`ub_str'')^2 * `resid_under_`lb_str'' / `resid_over_`ub_str'') + ///
                   (`resid_under_`lb_str'' / `sigma_T0'^2)
 local bias_under_`lb_str' : display %9.0g `slope_under_`lb_str'' / `denom_under_`lb_str''
@@ -380,11 +380,11 @@ local bias_over_`ub_str' : display %9.0g `slope_over_`ub_str'' / `denom_over_`ub
 local bias_over_`ub_str' = "`bias_over_`ub_str''" + "\omega_Y"
 
 local omegaratio_over_`ub_str' : display %9.0g  (`slope_under_`lb_str'')^2 * `resid_over_`ub_str'' / `resid_under_`lb_str''
-local varratio_over_`ub_str' : display %9.0g `resid_over_`ub_str'' / `sigma_T0'^2
+local varratio_over_`ub_str' : display %9.0g `resid_over_`ub_str'' / `sigma_T0'^2 */
 
 ******************************* Implied bias (finite T)
 * Variance of the bins
-foreach bin in under_`lb_str' over_`ub_str' {
+/* foreach bin in under_`lb_str' over_`ub_str' {
       sum real_`bin'
       local sigma_`bin' = r(sd)
 }
@@ -411,7 +411,7 @@ dis $coef_1_Y
 * Bias
 local bias2_under_`lb_str' = string(`num_C_all' * $coef_1_Y / `denom_C', "%9.0g")
 local bias2_over_`ub_str'= string(`num_H_all' * $coef_1_Y / `denom_H', "%9.0g")
-dis "`bias2_over_`ub_str''"
+dis "`bias2_over_`ub_str''" */
 
 ******************************* Create string
 
@@ -430,8 +430,8 @@ foreach bin in under_`lb_str' over_`ub_str' {
       local second_row = " &"
 
       * Fill in
-      local `source'_row_`bin' = "``source'_row_`bin'' & `sim2_coef_`bin'' & `sim2_tstat_`bin'' & ${slope_`bin'_str} & ${resid_`bin'_str} & ${coef_1_Y_str} & `bias2_`bin''" // & `sim1_coef_`bin''
-      local second_row = "`second_row' & `sim2_ci_`bin'' & `sim2_tstat_ci_`bin'' & ${trend_ci_`bin'} & &" // & `sim1_ci_`bin''
+      local `source'_row_`bin' = "``source'_row_`bin'' & `sim2_coef_`bin'' & `sim2_tstat_`bin'' & ${slope_`bin'_str} & ${resid_`bin'_str} & ${coef_1_Y_str} & ${bias2_`bin'}" // & `sim1_coef_`bin''
+      local second_row = "`second_row' & `sim2_ci_`bin'' & `sim2_tstat_ci_`bin'' & ${trend_ci_`bin'} & ${coef_1_Y_ci} &" // & `sim1_ci_`bin''
       
       * Conjoin first and second rows
       local `source'_row_`bin' = "``source'_row_`bin'' \\ `second_row' \\"

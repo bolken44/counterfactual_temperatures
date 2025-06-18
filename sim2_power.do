@@ -335,8 +335,8 @@ foreach source in prism_1970 { //era5_F schlenker_F ghcn_ext prism_1970
                   foreach bin in under_`lb_str' over_`ub_str' {
 
                         * Fill in from globals passed from cftemp_sim
-                        local `source'_row_`bin' = "``source'_row_`bin'' & ${coef_1_`bin'}"
-                        local second_row_`bin' = "`second_row_`bin'' & [${p25_1_`bin'}, ${p975_1_`bin'}]"
+                        local `source'_row_`bin' = "``source'_row_`bin'' & ${coef_p500_1_`bin'} & ${tstat_p500_1_`bin'}"
+                        local second_row_`bin' = "`second_row_`bin'' & [${coef_p25_1_`bin'}, ${coef_p975_1_`bin'}] & [${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
                   }
             }
 
@@ -361,10 +361,12 @@ foreach source in prism_1970 { //era5_F schlenker_F ghcn_ext prism_1970
             "\caption{Comparison of \texttt{cftemp} Methods Under Higher Order Trends (`title_`source'')}" _n ///
             "\label{cftemp-comp}" _n ///
             "\begin{threeparttable}" _n ///
-            "\scalebox{0.75}{" _n ///
-            "\begin{tabular}{llccc}" _n ///
+            "\makebox[\textwidth][c]{" _n ///
+            "\scalebox{0.85}{" _n ///
+            "\begin{tabular}{llcccccc}" _n ///
             "\toprule" _n ///
-            "Dataset & \multicolumn{1}{c}{Method} & Linear & Quadratic & Cubic \\" _n ///
+            "\multirow{2}{*}{Dataset} & \multirow{2}{*}{Method} & \multicolumn{2}{c}{Linear} & \multicolumn{2}{c}{Quadratic} & \multicolumn{2}{c}{Cubic} \\" _n ///
+            " & & Coef & t-Stat & Coef & t-Stat & Coef & t-Stat \\" _n ///
             "\midrule" _n ///
             "``source'_row_under_`lb_str''" _n ///
             "\cmidrule(lr){2-5}  & \textit{Over 90 Bin} \\" _n ///
@@ -372,8 +374,9 @@ foreach source in prism_1970 { //era5_F schlenker_F ghcn_ext prism_1970
             "\hline \hline" _n ///
             "\end{tabular}" _n ///
             "}" _n ///
+            "}" _n ///
             "\begin{tablenotes}" _n ///
-            "\footnotesize \textit{Notes:} All temperatures are in \degree F. `sample_`source''" _n ///
+            "\hspace{1.8cm} \footnotesize \textit{Notes:} All temperatures are in \degree F. `sample_`source''" _n ///
             "\end{tablenotes}" _n ///
             "\end{threeparttable}" _n ///
             "\end{table}" _n
