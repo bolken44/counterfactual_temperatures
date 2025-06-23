@@ -51,7 +51,7 @@ program define cftemp_sim
             local base_ff = "`time'"
       }
       if strpos("`outcome_method'", "quad") > 0 {
-            local outcome_method = "`outcome_param' * `time' * `time' * `temp'"
+            local outcome_ff = "`outcome_param' * `time' * `time' * `temp'"
             local base_ff = "`time' * `time'"
       }
       if strpos("`outcome_method'", "cubic") > 0 {
@@ -494,7 +494,7 @@ program define cftemp_sim
 
                         // save correlation
                         use `save', clear
-                        replace trend_Y = `slope_Y' if _n == `l' // l denotes simulation count
+                        replace trend_Y = `slope_Y' if _n == (2 * `l') | _n == (2 * `l') - 1 // l denotes simulation count
                   }
 
                   * drop randomly generated variables to draw again
@@ -529,7 +529,7 @@ program define cftemp_sim
                   global coef_p975_`i'_Y = string(round(`r(r975)', 0.00001))
 
                   global coef_`i'_Y_str = string(round(`r(r500)', 0.00001))
-                  global coef_`i'_Y_ci = "[`coef_p25_`i'_Y', `coef_p975_`i'_Y']"
+                  global coef_`i'_Y_ci = "[${coef_p25_`i'_Y}, ${coef_p975_`i'_Y}]"
                   
                   // exclude Y variables from lags
                   if strpos("`compare'", "lags") > 0 {
@@ -543,6 +543,9 @@ program define cftemp_sim
                   // calculate omega C and H
                   foreach bin in under_`lb_str' over_`ub_str' {
                         
+                        tempfile save
+                        save `save', replace
+
                         // residualize
                         local residualize = cond(strpos("`compare'", "cftemp") > 0, "`extreme_cftemp'", cond(strpos("`compare'", "lags") > 0, "`lags'", ""))
 
@@ -582,54 +585,59 @@ program define cftemp_sim
                         global sigma2_T0_str = string(round(${sigma_T0}^2, 0.01))
                         dis "Inside: ${sigma_T0}"
 
+                        * Back to dataset
+                        use `save', clear
+                        
                         * Variance of the bins
                         sum real_`bin'
                         local sigma_`bin' = r(sd)
 
-                        use `save', clear
-                        replace slope_`bin' = $slope_`bin' if varName == "real_`bin'"
-                        replace se_`bin' =  `se_`bin'' if varName == "real_`bin'"
-                        replace sigma_`bin' = `sigma_`bin'' if varName == "real_`bin'"
-                        replace resid_`bin' = ${resid_`bin'} if varName == "real_`bin'"
+                        replace slope_`bin' = ${slope_`bin'}
+                        replace se_`bin' =  `se_`bin''
+                        replace sigma_`bin' = `sigma_`bin''
+                        replace resid_`bin' = ${resid_`bin'}
                         replace sigma_T0 = ${sigma_T0}
                         local include = "`include' slope_`bin' se_`bin' sigma_`bin' resid_`bin'"
                   }
                   
                   * Under bin
-                  local num_C1 = ($slope_over_`ub_str')^2 * $sigma_T0^2 + $resid_over_`ub_str' + 0.0012 * `sigma_over_`ub_str''^2
-                  local num_C2 = $slope_under_`lb_str' * $sigma_T0^2
-                  local num_C3 = $slope_under_`lb_str' * $slope_over_`ub_str' * $sigma_T0^2
-                  local num_C4 = $slope_over_`ub_str' * $sigma_T0^2
+                  local num_C1 = (${slope_over_`ub_str'})^2 * ${sigma_T0}^2 + ${resid_over_`ub_str'} + 0.0012 * `sigma_over_`ub_str''^2
+                  local num_C2 = ${slope_under_`lb_str'} * ${sigma_T0}^2
+                  local num_C3 = ${slope_under_`lb_str'} * ${slope_over_`ub_str'} * ${sigma_T0}^2
+                  local num_C4 = ${slope_over_`ub_str'} * ${sigma_T0}^2
                   local num_C_all = `num_C1' * `num_C2' - `num_C3' * `num_C4'
 
                   * Over bin
-                  local num_H1 = ($slope_under_`lb_str')^2 * $sigma_T0^2 + `resid_under_`lb_str'' + 0.0012 * `sigma_under_`lb_str''^2
-                  local num_H2 = $slope_over_`ub_str' * $sigma_T0^2
-                  local num_H3 = $slope_over_`ub_str' * $slope_under_`lb_str' * $sigma_T0^2
-                  local num_H4 = $slope_under_`lb_str' * $sigma_T0^2
+                  local num_H1 = (${slope_under_`lb_str'})^2 * ${sigma_T0}^2 + ${resid_under_`lb_str'} + 0.0012 * `sigma_under_`lb_str''^2
+                  local num_H2 = ${slope_over_`ub_str'} * ${sigma_T0}^2
+                  local num_H3 = ${slope_over_`ub_str'} * ${slope_under_`lb_str'} * ${sigma_T0}^2
+                  local num_H4 = ${slope_under_`lb_str'} * ${sigma_T0}^2
                   local num_H_all = `num_H1' * `num_H2' - `num_H3' * `num_H4'
 
                   * Denominators
                   local denom_C = `num_H1' * `num_C1' - (`num_C3')^2
                   local denom_H = `num_C1' * `num_H1' - (`num_H3')^2
-                  dis $coef_1_Y
+                  dis $coef_p500_1_Y
 
                   * Bias
                   global bias2_under_`lb_str' = string(`num_C_all' * $coef_p500_1_Y / `denom_C', "%9.0g")
                   global bias2_over_`ub_str'= string(`num_H_all' * $coef_p500_1_Y / `denom_H', "%9.0g")
                   dis "${bias2_over_`ub_str'}"
 
-                  replace bias = `num_C_all' * trend_Y / `denom_C' if varName == "real_under_`lb_str'" & _n == `l' // l denotes simulation count
-                  replace bias = `num_H_all' * trend_Y / `denom_H' if varName == "real_over_`ub_str'" & _n == `l' // l denotes simulation count
+                  replace bias = `num_C_all' * trend_Y / `denom_C' if varName == "real_under_`lb_str'" 
+                  replace bias = `num_H_all' * trend_Y / `denom_H' if varName == "real_over_`ub_str'"
+                  dis "${bias2_over_`ub_str'}"
                   local include = "`include' sigma_T0 bias"
             }
 
             * save all simulation runs to folder
             preserve
             keep varName varNum coef se tstat pValue loop trend_Y `include'
+            dis "${bias2_over_`ub_str'}"
             gen method = "${method}"
             gen source = "${source}"
             duplicates drop
+            drop if varName == ""
             order source method varName varNum coef se tstat pValue trend_Y `include' loop
             export delimited "${output}bindev/cftemp_${source}_`outcome_method'_${task}.csv", replace
             restore

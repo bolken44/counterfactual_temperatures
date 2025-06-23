@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=bias_table
+#SBATCH --job-name=power_table
 #SBATCH --ntasks=1                        # number of scripts that can be run simultaneously
 #SBATCH --cpus-per-task=4                 # Each script gets 8 CPU cores
 #SBATCH --array=1-36%3
@@ -20,4 +20,4 @@ export STATATMP
 
 echo "Running task ID: $SLURM_ARRAY_TASK_ID"
 
-stata-mp -b do climate/parallel_bias_table.do ${SLURM_ARRAY_TASK_ID}
+stata-mp -b do climate/parallel_power.do ${SLURM_ARRAY_TASK_ID}

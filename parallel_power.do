@@ -1,11 +1,13 @@
 /*******************************************************************************
 AUTHOR: Harufumi Nakazawa
-DATE: June 2025 - this code parallelizes reformed_bias_table.do for the cluster.
-ACTION: Creates tables to compare binning bias across different cftemp versions.
+DATE: June 2025 - this code parallelizes sim2_power.do
 *******************************************************************************/
 
 clear all
 set more off
+
+ssc install ppmlhdfe
+ssc install ereplace
 
 global home "/orcd/home/002/hnaka24/climate/"
 global output "${home}output/"
@@ -18,7 +20,7 @@ args task
 local task = real("`task'")
 global task = `task'
 
-log using "${home}log/bias_table/row_`task'.txt", text replace
+log using "${home}log/power_table/row_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
 ********************************************************************************
@@ -26,10 +28,6 @@ display "Current time: " c(current_date) " " c(current_time)
 ********************************************************************************
 adopath + "${home}/cftemp"
 run "${home}/cftemp/cftemp_sim.ado"
-
-/* ssc install ereplace, replace
-ssc install reghdfe, replace
-ssc install ftools, replace */
 
 * Declare which one
 local sources "era5_F schlenker_F ghcn_ext prism_1970"
@@ -240,7 +238,24 @@ set seed 1642
 ********************************************************************************
 ** RUN
 ********************************************************************************
+local title_era5_F = "ERA 5"
+local title_schlenker_F = "PRISM"
+local title_prism_1970 = "PRISM (1970-2019)"
+local title_ghcn_ext = "GHCN"
+
+local sample_era5_F = "The sample period is 1970-2019 for ERA Land 5."
+local sample_schlenker_F = "The sample period is 1950-2019 for this version of PRISM."
+local sample_prism_1970 = "The sample period is 1970-2019 for this version of PRISM."
+local sample_ghcn_ext = "The sample period is 1970-2016 for GHCN."
+
+local base_era5_F = 1980
+local base_schlenker_F = 1960
+local base_prism_1970 = 1980
+local base_ghcn_ext = 1980
+
 local title_naive = "No correction"
+local title_adapt0 = "No correction (Cold Counties)"
+local title_adapt1 = "No correction (Hot Counties)"
 local title_stateyearFE = "State-Year Fixed Effects"
 local title_lag3 = "With 3 Lags"
 local title_trends = "County-Specific Linear Trends"
@@ -257,18 +272,19 @@ local binsize = 10
 local lb = 10
 local ub = 90
 
-//start of the loop
+// start of loop
 global source = "`source'"
 global method = "`method'"
 
 local data_`source'_naive = "`data_`source'_year'"
+local data_`source'_adapt0 = "`data_`source'_year'"
+local data_`source'_adapt1 = "`data_`source'_year'"
 local data_`source'_trends = "`data_`source'_year'"
 local data_`source'_stateyearFE = "`data_`source'_year'"
 local data_`source'_lag3 = "`data_`source'_year'"
 local data_`source'_5year = "`data_`source'_year'"
 
 local row = "`row' \midrule \multirow{8}{*}{`title_`source''}"
-      
       
 * Prepare dataset
 use "`data_`source'_`method''", clear
@@ -290,6 +306,19 @@ drop if state == "AK" | state == "PR" | state == "HI"
 * create pre period temperature
 gen baselinePeriodTemp = avg_yearly_temp if year <= `base_`source''
 bysort fips: ereplace baselinePeriodTemp = mean(baselinePeriodTemp)
+
+* adaptation
+if strpos("`method'", "adapt") > 0 {
+      
+      * divide sample into two: above and below pre temp median
+      sum baselinePeriodTemp, detail
+      local medianPreTemp = `r(p50)'
+
+      gen aboveMedian = baselinePeriodTemp > `medianPreTemp'
+      local num = substr("`method'", -1, 1) //extract digit the end
+      dis "`num'"
+      keep if aboveMedian == `num'
+}
 
 * create numeric variable for year
 /* gen agno = year */
@@ -325,186 +354,76 @@ forvalues start = `lb'(`binsize')`ub_bin' {
 local ub_str = cond(`ub' < 0, "n`=abs(`ub')'", "`ub'") //to name the bin real_over_`ub'
 local names_bins = "`names_bins' over_`ub_str'"
 
-******************************* Simulation 1 coefficient and SE
-/* local compare = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "sim")))))
-
-if inlist("`method'", "naive", "stateyearFE", "lag3", "trends", "5year", "year") {
-      cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme
-
-      foreach bin in under_`lb_str' over_`ub_str' {
-            local sim1_coef_`bin' = "${coef_1_`bin'}"
-            local sim1_ci_`bin' = "[${p25_1_`bin'}, ${p975_1_`bin'}]"
-      }
-}
-else {
-      foreach bin in under_`lb_str' over_`ub_str' {
-            local sim1_coef_`bin' = ""
-            local sim1_ci_`bin' = ""
-      }
-} */
-
 ******************************* Simulation 2 coefficient and SE, trend in Y
-local compare = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "cftemp"))))) //different from sim 1 compare! cftemp instead of sim
+local compare = cond(strpos("`method'", "naive") > 0 | strpos("`method'", "adapt") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "cftemp"))))) //different from sim 1 compare! cftemp instead of sim
 
-cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme bias
-
+* Initialize
 foreach bin in under_`lb_str' over_`ub_str' {
-      local sim2_coef_`bin' = "${coef_p500_1_`bin'}"
-      local sim2_ci_`bin' = "[${coef_p25_1_`bin'}, ${coef_p975_1_`bin'}]"
-      local sim2_tstat_`bin' = "${tstat_p500_1_`bin'}"
-      local sim2_tstat_ci_`bin' = "[${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
-
-      local bias_`bin' = "" //initialize
-      local slope_`bin' = ${slope_`bin'}
-      local resid_`bin' = ${resid_`bin'}
-}
-local sigma_T0 = ${sigma_T0}
-
-******************************* Implied bias (infinite T)
-* Under bin
-/* local denom_under_`lb_str' = (`slope_under_`lb_str'')^2 + ///
-                  ((`slope_over_`ub_str'')^2 * `resid_under_`lb_str'' / `resid_over_`ub_str'') + ///
-                  (`resid_under_`lb_str'' / `sigma_T0'^2)
-local bias_under_`lb_str' : display %9.0g `slope_under_`lb_str'' / `denom_under_`lb_str''
-local bias_under_`lb_str' = "`bias_under_`lb_str''" + "\omega_Y"
-
-local omegaratio_under_`lb_str' : display %9.0g (`slope_over_`ub_str'')^2 * `resid_under_`lb_str'' / `resid_over_`ub_str''
-local varratio_under_`lb_str' : display %9.0g `resid_under_`lb_str'' / `sigma_T0'^2
-
-* Over bin
-local denom_over_`ub' = (`slope_over_`ub_str'')^2 + ///
-                  ((`slope_under_`lb_str'')^2 * `resid_over_`ub_str'' / `resid_under_`lb_str'') + ///
-                  (`resid_over_`ub_str'' / `sigma_T0'^2)
-
-local bias_over_`ub_str' : display %9.0g `slope_over_`ub_str'' / `denom_over_`ub_str''
-local bias_over_`ub_str' = "`bias_over_`ub_str''" + "\omega_Y"
-
-local omegaratio_over_`ub_str' : display %9.0g  (`slope_under_`lb_str'')^2 * `resid_over_`ub_str'' / `resid_under_`lb_str''
-local varratio_over_`ub_str' : display %9.0g `resid_over_`ub_str'' / `sigma_T0'^2 */
-
-******************************* Implied bias (finite T)
-* Variance of the bins
-/* foreach bin in under_`lb_str' over_`ub_str' {
-      sum real_`bin'
-      local sigma_`bin' = r(sd)
-}
-
-* Under bin
-local num_C1 = (`slope_over_`ub_str'')^2 * `sigma_T0'^2 + `resid_over_`ub_str'' + 0.0012 * `sigma_over_`ub_str''^2
-local num_C2 = `slope_under_`lb_str'' * `sigma_T0'^2
-local num_C3 = `slope_under_`lb_str'' * `slope_over_`ub_str'' * `sigma_T0'^2
-local num_C4 = `slope_over_`ub_str'' * `sigma_T0'^2
-local num_C_all = `num_C1' * `num_C2' - `num_C3' * `num_C4'
-
-* Over bin
-local num_H1 = (`slope_under_`lb_str'')^2 * `sigma_T0'^2 + `resid_under_`lb_str'' + 0.0012 * `sigma_under_`lb_str''^2
-local num_H2 = `slope_over_`ub_str'' * `sigma_T0'^2
-local num_H3 = `slope_over_`ub_str'' * `slope_under_`lb_str'' * `sigma_T0'^2
-local num_H4 = `slope_under_`lb_str'' * `sigma_T0'^2
-local num_H_all = `num_H1' * `num_H2' - `num_H3' * `num_H4'
-
-* Denominators
-local denom_C = `num_H1' * `num_C1' - (`num_C3')^2
-local denom_H = `num_C1' * `num_H1' - (`num_H3')^2
-dis $coef_1_Y
-
-* Bias
-local bias2_under_`lb_str' = string(`num_C_all' * $coef_1_Y / `denom_C', "%9.0g")
-local bias2_over_`ub_str'= string(`num_H_all' * $coef_1_Y / `denom_H', "%9.0g")
-dis "`bias2_over_`ub_str''" */
-
-******************************* Create string
-
-* Large T case
-/* foreach bin in under_`lb_str' over_`ub_str' {
       local `source'_row_`bin' = "``source'_row_`bin'' & \multirow{2}{*}{`title_`method''}"
-      local `source'_row = "``source'_row' & `sim1_coef_`bin'' & `sim2_coef_`bin'' & `slope_`bin'' & ${resid_`bin'_str} & `bias_`bin''"
-      local second_row = "`second_row' & `sim1_ci_`bin'' & `sim2_ci_`bin'' & [`lb_`bin'', `ub_`bin''] & &"
-} */
-
-* Finite T case
-foreach bin in under_`lb_str' over_`ub_str' {
-      
-      * Initialize
-      local `source'_row_`bin' = "``source'_row_`bin'' & \multirow{2}{*}{`title_`method''}"
-      local second_row = " &"
-
-      * Fill in
-      local `source'_row_`bin' = "``source'_row_`bin'' & `sim2_coef_`bin'' & `sim2_tstat_`bin'' & ${slope_`bin'_str} & ${resid_`bin'_str} & ${coef_1_Y_str} & ${bias2_`bin'}" // & `sim1_coef_`bin''
-      local second_row = "`second_row' & `sim2_ci_`bin'' & `sim2_tstat_ci_`bin'' & ${trend_ci_`bin'} & ${coef_1_Y_ci} &" // & `sim1_ci_`bin''
-      
-      * Conjoin first and second rows
-      local `source'_row_`bin' = "``source'_row_`bin'' \\ `second_row' \\"
+      local second_row_`bin' = " &"
 }
 
+* Loop through powers
+foreach power in linear quadratic cubic {
+      cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(`power', 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme
 
-******************************* Parallel Table
-/* local row = "`row' & `title_`method''"
-dis "`row'" */
+      foreach bin in under_`lb_str' over_`ub_str' {
 
-* Large T case
-/* local formula = "Dataset & \multicolumn{1}{c}{Method}& \(\omega_C\) & \(\omega_C^2\) & \(\omega_H^2 \frac{\sigma_{e_c}^2}{\sigma_{e_H}^2}\) & \(\frac{\sigma_{e_c}^2}{\sigma_{T_0}^2}\) & Bias & \(\omega_H\) & \(\omega^2_H\) & \(\omega^2_C\) \(\frac{\sigma^2_{e_H}}{\sigma^2_{e_C}}\) & \(\frac{\sigma^2_{e_H}}{\sigma^2_{T_0}}\) & Bias \\"
-foreach bin in under_`lb_str' over_`ub_str' {
-      local row = "`row' & ${slope_`bin'_str} & `${slope2_`bin'_str}' & `omegaratio_`bin'' & `varratio_`bin'' & `bias_`bin''"
-} */
-
-* Finite T case
-/* local formula = "Dataset & \multicolumn{1}{c}{Method} & \(\text{Term 1}_C\) & \(\text{Term 2}_C\) & \(\text{Term 3}_C\) & \(\text{Term 4}_C\) & \(\text{Num}_C\) & \(\text{Denom}_C\) & Bias & \(\text{Term 1}_H\) & \(\text{Term 2}_H\) & \(\text{Term 3}_H\) & \(\text{Term 4}_H\) & \(\text{Num}_H\) & \(\text{Denom}_H\) & Bias \\"
-foreach bin in C H {
-      local name = cond("`bin'" == "C", "under_`lb_str'", "over_`ub_str'")
-
-      foreach term in num_`bin'1 num_`bin'2 num_`bin'3 num_`bin'4 num_`bin'_all denom_`bin' {
-            local `term' = string(``term'', "%9.0g")
+            * Fill in from globals passed from cftemp_sim
+            local `source'_row_`bin' = "``source'_row_`bin'' & ${coef_p500_1_`bin'} & ${tstat_p500_1_`bin'}"
+            local second_row_`bin' = "`second_row_`bin'' & [${coef_p25_1_`bin'}, ${coef_p975_1_`bin'}] & [${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
       }
+}
 
-      local row = "`row' & `num_`bin'1' & `num_`bin'2' & `num_`bin'3' & `num_`bin'4' & `num_`bin'_all' & `denom_`bin'' & `bias2_`name''"
-} */
+* Conjoin first and second rows
+foreach bin in under_`lb_str' over_`ub_str' {
+      local `source'_row_`bin' = "``source'_row_`bin'' \\ `second_row_`bin'' \\"
+}
 
-/* local row = "`row' \\" */
 
-local `source'_row_under_`lb_str' = "\midrule \multirow{50}{*}{\shortstack{`title_`source'' \\ \(\sigma^2_{T_0} = ${sigma2_T0_str}\)}} & \textit{Under 10 Bin} \\ ``source'_row_under_`lb_str''"
+local `source'_row_under_`lb_str' = "\midrule \multirow{50}{*}{`title_`source''} & \textit{Under 10 Bin} \\ ``source'_row_under_`lb_str''"
 
 dis "``source'_row_under_`lb_str''"
 dis "``source'_row_over_`ub_str''"
 
-file open cftemp_`task'_`lb_str' using "${output}/bindev/cftemp_comp_`source'_`task'_under_`lb_str'.tex", write replace
-file write cftemp_`task'_`lb_str' ///
+
+file open power_`task'_`lb_str' using "${output}/bindev/power_table_`source'_`task'_under_`lb_str'.tex", write replace
+file write power_`task'_`lb_str' ///
       "``source'_row_under_`lb_str''" _n
-file close cftemp_`task'_`lb_str'
+file close power_`task'_`lb_str'
 
-file open cftemp_`task'_`ub_str' using "${output}/bindev/cftemp_comp_`source'_`task'_over_`ub_str'.tex", write replace
-file write cftemp_`task'_`ub_str' ///
+file open power_`task'_`ub_str' using "${output}/bindev/power_table_`source'_`task'_over_`ub_str'.tex", write replace
+file write power_`task'_`ub_str' ///
       "``source'_row_over_`ub_str''" _n
-file close cftemp_`task'_`ub_str'
+file close power_`task'_`ub_str'
 
-* Write bias table
-/* file open bias using "${output}/bindev/cftemp_bias_formula_new.tex", write replace
-file write bias ///
+
+/* file open power_`source' using "${output}/bindev/power_table_`source'.tex", write replace
+file write power_`source' ///
       "\clearpage" _n ///
       "\thispagestyle{empty}" _n ///
-      "\newgeometry{top=0.1in, bottom=0.1in, left=0.4in, right=0.4in}" _n ///
-      "\begin{landscape}" _n ///
       "\begin{table}[htb]" _n ///
       "\centering" _n ///
-      "\caption{Comparison of Different \texttt{cftemp} Methods - Terms in the Bias Formula}" _n ///
+      "\caption{Comparison of \texttt{cftemp} Methods Under Higher Order Trends (`title_`source'')}" _n ///
       "\label{cftemp-comp}" _n ///
       "\begin{threeparttable}" _n ///
-      "\scalebox{0.75}{" _n ///
-      "\begin{tabular}{llcccccccccccccc}" _n ///
+      "\makebox[\textwidth][c]{" _n ///
+      "\scalebox{0.85}{" _n ///
+      "\begin{tabular}{llcccccc}" _n ///
       "\toprule" _n ///
-      " & & \multicolumn{7}{c}{Under 10 Bin} & \multicolumn{7}{c}{Over 90 Bin} \\" _n ///
-      "\cmidrule(lr){3-9} \cmidrule(lr){10-16}" _n ///
-      "`formula'" _n ///
+      "\multirow{2}{*}{Dataset} & \multirow{2}{*}{Method} & \multicolumn{2}{c}{Linear} & \multicolumn{2}{c}{Quadratic} & \multicolumn{2}{c}{Cubic} \\" _n ///
+      " & & Coef & t-Stat & Coef & t-Stat & Coef & t-Stat \\" _n ///
       "\midrule" _n ///
-      "`row'" _n ///
+      "``source'_row_under_`lb_str''" _n ///
+      "\cmidrule(lr){2-5}  & \textit{Over 90 Bin} \\" _n ///
+      "``source'_row_over_`ub_str''" _n ///
       "\hline \hline" _n ///
       "\end{tabular}" _n ///
       "}" _n ///
+      "}" _n ///
       "\begin{tablenotes}" _n ///
-      "\footnotesize \textit{Notes:} All temperatures are in \degree F. The sample period is 1970-2019 for ERA Land 5, 1950-2019 for PRISM, and 1968-2016 for GHCN." _n ///
+      "\hspace{1.8cm} \footnotesize \textit{Notes:} All temperatures are in \degree F. `sample_`source''" _n ///
       "\end{tablenotes}" _n ///
       "\end{threeparttable}" _n ///
-      "\end{table}" _n ///
-      "\end{landscape}" _n ///
-      "\restoregeometry" _n
-file close bias */
+      "\end{table}" _n
+file close power_`source' */
