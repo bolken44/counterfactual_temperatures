@@ -364,8 +364,8 @@ foreach bin in under_`lb_str' over_`ub_str' {
 }
 
 * Loop through powers
-foreach power in linear quadratic cubic {
-      cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(`power', 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme
+foreach power in effect5 { //linear quadratic cubic
+      cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme effect(5)
 
       foreach bin in under_`lb_str' over_`ub_str' {
 
@@ -374,6 +374,8 @@ foreach power in linear quadratic cubic {
             local second_row_`bin' = "`second_row_`bin'' & [${coef_p25_1_`bin'}, ${coef_p975_1_`bin'}] & [${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
       }
 }
+
+exit
 
 * Conjoin first and second rows
 foreach bin in under_`lb_str' over_`ub_str' {

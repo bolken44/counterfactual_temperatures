@@ -14,6 +14,11 @@ global weather "${pool}processed/"
 
 log using "${home}log/append_files.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
+set linesize 255
+
+ssc install schemepack, replace
+set scheme white_tableau
+
 *******************************************************************************/
 *** Append Files
 *******************************************
@@ -30,13 +35,13 @@ local sample_prism_1970 = "The sample period is 1970-2019 for this version of PR
 local sample_ghcn_ext = "The sample period is 1970-2016 for GHCN."
 
 local table = "power_table" // "cftemp_comp"
-local power = "cubic" // "cubic" "linear" // relevant for csvs and figures only
+local power = "quadratic" // "cubic" "quadratic" "linear" // relevant for csvs and figures only
 
-foreach source in era5_F schlenker_F ghcn_ext { //era5_F schlenker_F ghcn_ext prism_1970
+foreach source in era5_F { //era5_F schlenker_F ghcn_ext prism_1970
 
       // Define output file name
       local output_tex "${output}bindev/`table'_`source'.tex"
-      local output_csv "${output}bindev/`table'_`source'.csv"
+      local output_csv "${output}bindev/`table'_`power'_`source'.csv"
 
       // Delete the output file if it already exists to avoid appending multiple times
       shell rm -f `output_tex'
@@ -172,60 +177,123 @@ foreach source in era5_F schlenker_F ghcn_ext { //era5_F schlenker_F ghcn_ext pr
             preserve
             
             keep if varname == "real_`bin'"
+            /* replace bias = log(bias) */
 
-            foreach method in naive stateyearFE lag3 trends 5year year year_bayes avgtrend avgtrend_bayes chebyshev splines aggregate {
-                  count if pvalue < 0.05 & method == "`method'"
-                  local sig_`method' = string(round(r(N) /10, 0.1), "%4.1f")
+            foreach method in naive stateyearFE lag3 trends 5year year year_bayes avgtrend avgtrend_bayes chebyshev splines aggregate { //
+                  count if pvalue <= 0.05 & method == "`method'"
+                  local sig_`method'_`bin' = string(round(r(N) /10, 0.1), "%4.1f")
             }
 
-            // First plot - Distribution of Coefficients
+            * Plot distribution of coefficients
             twoway ///
-            (kdensity coef if method == "naive", lcolor(black)) ///
-            (kdensity coef if method == "stateyearFE", lcolor(red)) ///
-            (kdensity coef if method == "lag3", lcolor(green)) ///
-            (kdensity coef if method == "trends", lcolor(blue)) ///
-            (kdensity coef if method == "5year", lcolor(purple)) ///
+            (kdensity coef if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
+            (kdensity coef if method == "stateyearFE", lpattern(dash) color("155 52 58") lwidth(thick)) ///
+            (kdensity coef if method == "lag3", lpattern(dash) color("44 160 44") lwidth(thick)) ///
+            (kdensity coef if method == "trends", lpattern(dash) color("255 127 14") lwidth(thick)) ///
+            (kdensity coef if method == "5year", lpattern(dash) color("148 103 189") lwidth(thick)) ///
             , ///
-                  graphregion(color(white)) ///
-                  legend(position(6) cols(2) size(vsmall) ///
-                        order(1 2 3 4 5) ///
-                        label(1 "`title_naive' (`sig_naive'%)") ///
-                        label(2 "`title_stateyearFE' (`sig_stateyearFE'%)") ///
-                        label(3 "`title_lag3' (`sig_lag3'%)") ///
-                        label(4 "`title_trends' (`sig_trends'%)") ///
-                        label(5 "`title_5year' (`sig_5year'%)")) ///
-                  xline(0, lcolor(gs10) lpattern(dash)) ///
-                  xtitle("Coefficient", size(small)) ///
-                  ytitle("Density", size(small))
+            graphregion(color(white)) ///
+            xline(0, lcolor(gs10) lpattern(dash)) ///
+            xlabel(, nogrid) ///
+            ylabel(, nogrid) ///
+            xtitle("Coefficient", size(small)) ///
+            ytitle("Density", size(small)) legend(off)
+            /* legend(position(6) cols(2) size(vsmall) ///
+                  order(1 2 3 4 5) ///
+                  label(1 "`title_naive' (`sig_naive'%)") ///
+                  label(2 "`title_stateyearFE' (`sig_stateyearFE'%)") ///
+                  label(3 "`title_lag3' (`sig_lag3'%)") ///
+                  label(4 "`title_trends' (`sig_trends'%)") ///
+                  label(5 "`title_5year' (`sig_5year'%)")) /// */
             graph export "${output}bindev/coef_plot_naive_`power'_`bin'_`source'.pdf", replace
 
             twoway ///
-            (kdensity coef if method == "year", lcolor(black)) ///
-            (kdensity coef if method == "year_bayes", lcolor(red)) ///
-            (kdensity coef if method == "avgtrend", lcolor(blue)) ///
-            (kdensity coef if method == "avgtrend_bayes", lcolor(green)) ///
-            (kdensity coef if method == "chebyshev", lcolor(orange)) ///
+            (kdensity coef if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
+            (kdensity coef if method == "year", lpattern(dash) color("44 160 44") lwidth(thick)) ///
+            (kdensity coef if method == "year_bayes", lpattern(dash) color("155 52 58") lwidth(thick)) ///
+            (kdensity coef if method == "chebyshev", lpattern(dash) color("255 127 14") lwidth(thick)) ///
             , ///
-                  graphregion(color(white)) ///
-                  legend(position(6) cols(2) size(vsmall) ///
-                        order(1 2 3 4 5) ///
-                        label(1 "`title_year' (`sig_year'%)") ///
-                        label(2 "`title_year_bayes' (`sig_year_bayes'%)") ///
-                        label(3 "`title_avgtrend' (`sig_avgtrend'%)") ///
-                        label(4 "`title_avgtrend_bayes' (`sig_avgtrend_bayes'%)") ///
-                        label(5 "`title_chebyshev' (`sig_chebyshev'%)")) ///
-                  xline(0, lcolor(gs10) lpattern(dash)) ///
-                  xtitle("Coefficient", size(small)) ///
-                  ytitle("Density", size(small))
+            graphregion(color(white)) ///
+            xline(0, lcolor(gs10) lpattern(dash)) ///
+            xtitle("Coefficient", size(small)) ///
+            ytitle("Density", size(small)) legend(off) ///
+            xlabel(, nogrid) ///
+            ylabel(, nogrid) ///
+            /* legend(position(6) cols(2) size(vsmall) ///
+                  order(1 2 3 4 5 6) ///
+                  label(1 "`title_naive' (`sig_naive'%)") ///
+                  label(2 "`title_year' (`sig_year'%)") ///
+                  label(3 "`title_year_bayes' (`sig_year_bayes'%)") ///
+                  label(4 "`title_avgtrend' (`sig_avgtrend'%)") ///
+                  label(5 "`title_avgtrend_bayes' (`sig_avgtrend_bayes'%)") ///
+                  label(6 "`title_chebyshev' (`sig_chebyshev'%)")) /// */
+            /* (kdensity coef if method == "avgtrend", lpattern(dash) lwidth(thick)) ///
+            (kdensity coef if method == "avgtrend_bayes", lpattern(dash) lwidth(thick)) /// */
             graph export "${output}bindev/coef_plot_cftemp_`power'_`bin'_`source'.pdf", replace
 
-            * Plot distribution of `tstat`
+            * Plot distribution of tstat
             twoway ///
-            (kdensity tstat if method == "naive", lcolor(black)) ///
-            (kdensity tstat if method == "stateyearFE", lcolor(red)) ///
-            (kdensity tstat if method == "lag3", lcolor(green)) ///
-            (kdensity tstat if method == "trends", lcolor(blue)) ///
-            (kdensity tstat if method == "5year", lcolor(purple)) ///
+            (kdensity tstat if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
+            (kdensity tstat if method == "stateyearFE", lpattern(dash) color("155 52 58") lwidth(thick)) ///
+            (kdensity tstat if method == "lag3", lpattern(dash) color("44 160 44") lwidth(thick)) ///
+            (kdensity tstat if method == "trends", lpattern(dash) color("255 127 14") lwidth(thick)) ///
+            (kdensity tstat if method == "5year", lpattern(dash) color("148 103 189") lwidth(thick)) ///
+            , ///
+            graphregion(color(white)) ///
+            xline(0, lcolor(gs10) lpattern(dash)) ///
+            xline(1.96, lcolor(gs10) lpattern(dash)) ///
+            xline(-1.96, lcolor(gs10) lpattern(dash)) ///
+            xlabel(-5(5)10 1.96 "1.96" -1.96 "-1.96", nogrid) ///
+            ylabel(, nogrid) ///
+            xtitle("t-Stats", size(small)) ///
+            ytitle("Density", size(small)) legend(off)
+            /* legend(position(6) cols(2) size(vsmall) ///
+                  order(1 2 3 4 5) ///
+                  label(1 "`title_naive'") ///
+                  label(2 "`title_stateyearFE'") ///
+                  label(3 "`title_lag3'") ///
+                  label(4 "`title_trends'") ///
+                  label(5 "`title_5year'")) /// */
+            graph export "${output}bindev/tstat_plot_naive_`power'_`bin'_`source'.pdf", replace
+
+            twoway ///
+            (kdensity tstat if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
+            (kdensity tstat if method == "year", lpattern(dash) color("44 160 44") lwidth(thick)) ///
+            (kdensity tstat if method == "year_bayes", lpattern(dash) color("155 52 58") lwidth(thick)) ///
+            (kdensity tstat if method == "chebyshev", lpattern(dash) color("255 127 14") lwidth(thick)) ///
+            , ///
+            graphregion(color(white)) ///
+            xline(0, lcolor(gs10) lpattern(dash)) ///
+            xline(1.96, lcolor(gs10) lpattern(dash)) ///
+            xline(-1.96, lcolor(gs10) lpattern(dash)) ///
+            xlabel(-5(5)10 1.96 "1.96" -1.96 "-1.96", nogrid) ///
+            ylabel(, nogrid) ///
+            xtitle("t-Stats", size(small)) ///
+            ytitle("Density", size(small)) legend(off)
+            /* legend(position(6) cols(2) size(vsmall) ///
+                  order(1 2 3 4 5 6) ///
+                  label(1 "`title_naive'") ///
+                  label(2 "`title_year'") ///
+                  label(3 "`title_year_bayes'") ///
+                  label(4 "`title_avgtrend'") ///
+                  label(5 "`title_avgtrend_bayes'") ///
+                  label(6 "`title_chebyshev'")) /// */
+            /* (kdensity tstat if method == "avgtrend", lpattern(dash) lwidth(thick)) ///
+            (kdensity tstat if method == "avgtrend_bayes", lpattern(dash) lwidth(thick)) /// */
+            graph export "${output}bindev/tstat_plot_cftemp_`power'_`bin'_`source'.pdf", replace
+
+            * Legend
+            dis "\caption*{\color{p1line}{\textemdash\textemdash} `title_naive' (Under 10 Bin: `sig_naive_under_10'\%, Over 90 Bin: `sig_naive_over_90'\%) \hspace{1cm} \color{p2line}{- - -} `title_stateyearFE' (`sig_stateyearFE_under_10'\%, `sig_stateyearFE_over_90'\%) \hspace{3cm} \color{p3line}{- - -} `title_lag3' (`sig_lag3_under_10'\%, `sig_lag3_over_90'\%) \hspace{1cm}} \caption*{\color{p4line}{- - -} `title_trends' (`sig_trends_under_10'\%, `sig_trends_over_90'\%) \hspace{1cm} \color{p5line}{- - -} `title_5year' (`sig_5year_under_10'\%, `sig_5year_over_90'\%)}"
+
+            dis "\caption*{\color{p1line}{\textemdash\textemdash} `title_naive' (Under 10 Bin: `sig_naive_under_10'\%, Over 90 Bin: `sig_naive_over_90'\%) \hspace{1cm} \color{p2line}{- - -} `title_year' (`sig_year_under_10'\%, `sig_year_over_90'\%) \hspace{1cm} \color{p3line}{- - -} `title_year_bayes' (`sig_year_bayes_under_10'\%, `sig_year_bayes_over_90'\%) \hspace{1cm}} \caption*{\color{p4line}{- - -} `title_avgtrend' (`sig_avgtrend_under_10'\%, `sig_avgtrend_over_90'\%) \hspace{1cm} \color{p5line}{- - -} `title_avgtrend_bayes' (`sig_avgtrend_bayes_under_10'\%, `sig_avgtrend_bayes_over_90'\%) \hspace{1cm} \color{p6line}{- - -} `title_chebyshev' (`sig_chebyshev_under_10'\%, `sig_chebyshev_over_90'\%)}"
+
+            * Plot distribution of bias
+            /* twoway ///
+            (kdensity bias if method == "naive", lcolor(black)) ///
+            (kdensity bias if method == "stateyearFE", lcolor(red)) ///
+            (kdensity bias if method == "lag3", lcolor(green)) ///
+            (kdensity bias if method == "trends", lcolor(blue)) ///
+            (kdensity bias if method == "5year", lcolor(purple)) ///
             , ///
                   graphregion(color(white)) ///
                   legend(position(6) cols(2) size(vsmall) ///
@@ -236,31 +304,33 @@ foreach source in era5_F schlenker_F ghcn_ext { //era5_F schlenker_F ghcn_ext pr
                         label(4 "`title_trends'") ///
                         label(5 "`title_5year'")) ///
                   xline(0, lcolor(gs10) lpattern(dash)) ///
-                  xtitle("t-Stats", size(small)) ///
+                  xtitle("Log Bias", size(small)) ///
                   ytitle("Density", size(small))
-            graph export "${output}bindev/tstat_plot_naive_`power'_`bin'_`source'.pdf", replace
+            graph export "${output}bindev/bias_plot_naive_`power'_`bin'_`source'.pdf", replace
 
             twoway ///
-            (kdensity tstat if method == "year", lcolor(black)) ///
-            (kdensity tstat if method == "year_bayes", lcolor(red)) ///
-            (kdensity tstat if method == "avgtrend", lcolor(blue)) ///
-            (kdensity tstat if method == "avgtrend_bayes", lcolor(green)) ///
-            (kdensity tstat if method == "chebyshev", lcolor(orange)) ///
+            (kdensity bias if method == "naive", lcolor(gray)) ///
+            (kdensity bias if method == "year", lcolor(black)) ///
+            (kdensity bias if method == "year_bayes", lcolor(red)) ///
+            (kdensity bias if method == "avgtrend", lcolor(blue)) ///
+            (kdensity bias if method == "avgtrend_bayes", lcolor(green)) ///
+            (kdensity bias if method == "chebyshev", lcolor(orange)) ///
             , ///
                   graphregion(color(white)) ///
                   legend(position(6) cols(2) size(vsmall) ///
-                        order(1 2 3 4 5) ///
-                        label(1 "`title_year'") ///
-                        label(2 "`title_year_bayes'") ///
-                        label(3 "`title_avgtrend'") ///
-                        label(4 "`title_avgtrend_bayes'") ///
-                        label(5 "`title_chebyshev'")) ///
+                        order(1 2 3 4 5 6) ///
+                        label(1 "`title_naive'") ///
+                        label(2 "`title_year'") ///
+                        label(3 "`title_year_bayes'") ///
+                        label(4 "`title_avgtrend'") ///
+                        label(5 "`title_avgtrend_bayes'") ///
+                        label(6 "`title_chebyshev'")) ///
                   xline(0, lcolor(gs10) lpattern(dash)) ///
-                  xtitle("t-Stats", size(small)) ///
+                  xtitle("Log Bias", size(small)) ///
                   ytitle("Density", size(small))
-            graph export "${output}bindev/tstat_plot_cftemp_`power'_`bin'_`source'.pdf", replace
-
-            restore
+            graph export "${output}bindev/bias_plot_cftemp_`power'_`bin'_`source'.pdf", replace */
+            restore 
       }
 
 }
+//
