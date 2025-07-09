@@ -23,7 +23,7 @@ display "Current time: " c(current_date) " " c(current_time)
 ********************************************************************************
 
 *** population (decade level regressions)
-/* preserve
+preserve
 	use "${outcomes}censusPopulationData.dta", clear 
 	
 	keep fips decade totalPop
@@ -34,7 +34,7 @@ display "Current time: " c(current_date) " " c(current_time)
 	
 	tempfile populationByFips
 	save `populationByFips', replace
-restore */
+restore
 
 *** migration (year level regressions)
 /* preserve
@@ -195,31 +195,34 @@ run "${path}/Haru/cftemp/cftemp_plot.ado"
 ** ADD WEATHER DATA
 ********************************************************************************
 local data_era5 = "${weather}era5_UScounty_1970_2019_cftemp.dta"
-local data_month_era5 = "${weather}era5_monthly_UScounty_1970_2019_cftemp.dta"
+local data_month_era5 = "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp.dta"
 local bins_era5 = "binsize(5) lb(-10) ub(35) omit(6)"
 
 local data_era5_F = "${weather}era5_UScounty_1970_2019_cftemp_F.dta"
-local data_month_era5_F = "${weather}era5_monthly_UScounty_1970_2019_cftemp_F.dta"
+local data_month_era5_F = "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F.dta"
 local bins_era5_F = "binsize(10) lb(10) ub(90) omit(6)"
+
+local data_era5_F_year_bayes = "${weather}era5_UScounty_1970_2019_cftemp_F_bayes.dta"
+local data_month_era5_F_year_bayes = "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F_bayes.dta"
 
 local data_ghcn = "${weather}ghcn_UScounty_1968_2002_cftemp.dta"
 local prcp_ghcn = "${weather}ghcn_UScounty_1968_2002_cftemp_prcp.dta"
-local data_month_ghcn = "${weather}ghcn_monthly_UScounty_1968_2002_cftemp.dta"
-local prcp_month_ghcn = "${weather}ghcn_monthly_UScounty_1968_2002_cftemp_prcp.dta"
+local data_month_ghcn = "${weather}monthly/ghcn_monthly_UScounty_1968_2002_cftemp.dta"
+local prcp_month_ghcn = "${weather}monthly/ghcn_monthly_UScounty_1968_2002_cftemp_prcp.dta"
 local bins_ghcn = "binsize(10) lb(10) ub(90) omit(6)"
 
 local data_ghcn_ext = "${weather}ghcn_UScounty_1968_2016_cftemp.dta"
 local prcp_ghcn_ext = "${weather}ghcn_UScounty_1968_2016_cftemp_prcp.dta"
-local data_month_ghcn_ext = "${weather}ghcn_monthly_UScounty_1968_2016_cftemp.dta"
-local prcp_month_ghcn_ext = "${weather}ghcn_monthly_UScounty_1968_2016_cftemp_prcp.dta"
+local data_month_ghcn_ext = "${weather}monthly/ghcn_monthly_UScounty_1968_2016_cftemp.dta"
+local prcp_month_ghcn_ext = "${weather}monthly/ghcn_monthly_UScounty_1968_2016_cftemp_prcp.dta"
 local bins_ghcn_ext = "binsize(10) lb(10) ub(90) omit(6)"
 
 local data_schlenker = "${weather}schlenker_UScounty_1950_2019_cftemp.dta"
-local data_month_schlenker = "${weather}schlenker_UScounty_1950_2019_cftemp.dta"
+local data_month_schlenker = "${weather}monthly/schlenker_UScounty_1950_2019_cftemp.dta"
 local bins_schlenker = "binsize(5) lb(-10) ub(35) omit(6)"
 
 local data_schlenker_F = "${weather}schlenker_UScounty_1950_2019_cftemp_F.dta"
-local data_month_schlenker_F = "${weather}schlenker_UScounty_1950_2019_cftemp_F.dta"
+local data_month_schlenker_F = "${weather}monthly/schlenker_UScounty_1950_2019_cftemp_F.dta"
 local bins_schlenker_F = "binsize(10) lb(10) ub(90) omit(6)"
 
 * Sample period for mortality results
@@ -339,9 +342,10 @@ restore */
 ********************************************************************************
 ** RUN
 ********************************************************************************
+local method "_year_bayes"
 foreach source in era5_F { //ghcn schlenker era5_F
 
-      use "`data_`source''", clear
+      use "`data_`source'`method''", clear
 
       xtset fips year
 
@@ -457,32 +461,32 @@ foreach source in era5_F { //ghcn schlenker era5_F
 
                   ************* cftemp
                   cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year) cluster(fips) compare(none)
-                  graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_`source'_`years'_before.jpg", replace
+                  graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_`source'`method'_`years'_before.jpg", replace
 
                   cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year) cluster(fips) 
-                  graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_`source'`method'_`years'.jpg", replace
 
                   cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year) cluster(fips) control(mprcp1-mprcp11)
-                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_`outcome'_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_`outcome'_`source'`method'_`years'.jpg", replace
 
                   cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year_state) cluster(fips)
-                  graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_`outcome'_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_`outcome'_`source'`method'_`years'.jpg", replace
 
                   cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year_state) cluster(fips) control(mprcp1-mprcp11)
-                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_`outcome'_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_`outcome'_`source'`method'_`years'.jpg", replace
 
                   ************* no weight
                   cftemp_plot mortality_`outcome', `bins_`source'' fe(fips year) cluster(fips) 
-                  graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_noweight_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_noweight_`source'`method'_`years'.jpg", replace
 
                   cftemp_plot mortality_`outcome', `bins_`source'' fe(fips year) cluster(fips) control(mprcp1-mprcp11)
-                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_`outcome'_noweight_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_`outcome'_noweight_`source'`method'_`years'.jpg", replace
 
                   cftemp_plot mortality_`outcome', `bins_`source'' fe(fips year_state) cluster(fips)
-                  graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_`outcome'_noweight_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_`outcome'_noweight_`source'`method'_`years'.jpg", replace
 
                   cftemp_plot mortality_`outcome', `bins_`source'' fe(fips year_state) cluster(fips) control(mprcp1-mprcp11)
-                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_`outcome'_noweight_`source'_`years'.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_`outcome'_noweight_`source'`method'_`years'.jpg", replace
 
                   ************* with trends instead of cftemp
                   cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year) cluster(fips) compare(trends, fips#c.year)
@@ -509,16 +513,16 @@ foreach source in era5_F { //ghcn schlenker era5_F
                   foreach ver in naive cftemp {
 
                         cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year) cluster(fips) compare(`ver' het, hightemp)
-                        graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_`source'_`years'_`lab`ver''.jpg", replace
+                        graph export "${output}deschenes/`source'/harmonized/mortality_`outcome'_`source'`method'_`years'_`lab`ver''.jpg", replace
 
                         cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year) cluster(fips) control(mprcp1-mprcp11) compare(`ver' het, hightemp)
-                        graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_`outcome'_`source'_`years'_`lab`ver''.jpg", replace
+                        graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_`outcome'_`source'`method'_`years'_`lab`ver''.jpg", replace
 
                         cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year_state) cluster(fips) compare(`ver' het, hightemp)
-                        graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_`outcome'_`source'_`years'_`lab`ver''.jpg", replace
+                        graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_`outcome'_`source'`method'_`years'_`lab`ver''.jpg", replace
 
                         cftemp_plot mortality_`outcome', `bins_`source'' aweights(population_`outcome') fe(fips year_state) cluster(fips) control(mprcp1-mprcp11) compare(`ver' het, hightemp)
-                        graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_`outcome'_`source'_`years'_`lab`ver''.jpg", replace
+                        graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_`outcome'_`source'`method'_`years'_`lab`ver''.jpg", replace
 
                   } */
 
@@ -591,32 +595,32 @@ foreach source in era5_F { //ghcn schlenker era5_F
 
             ************* cftemp
             cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year) cluster(age_county) compare(none)
-            graph export "${output}deschenes/`source'/harmonized/mortality_pooled_`source'_`years'_before.jpg", replace
+            graph export "${output}deschenes/`source'/harmonized/mortality_pooled_`source'`method'_`years'_before.jpg", replace
 
             cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year) cluster(age_county)
-            graph export "${output}deschenes/`source'/harmonized/mortality_pooled_`source'_`years'.jpg", replace            
+            graph export "${output}deschenes/`source'/harmonized/mortality_pooled_`source'`method'_`years'.jpg", replace            
 
             cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year) cluster(age_county) control(mprcp1-mprcp11)
-            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_pooled_`source'_`years'.jpg", replace
+            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_pooled_`source'`method'_`years'.jpg", replace
 
             cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year_state) cluster(age_county)
-            graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_pooled_`source'_`years'.jpg", replace
+            graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_pooled_`source'`method'_`years'.jpg", replace
 
             cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year_state) cluster(age_county) control(mprcp1-mprcp11)
-            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_pooled_`source'_`years'.jpg", replace
+            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_pooled_`source'`method'_`years'.jpg", replace
 
             ************* no weights
             cftemp_plot mortality_, `bins_`source'' fe(age_county year) cluster(age_county)
-            graph export "${output}deschenes/`source'/harmonized/mortality_pooled_noweight_`source'_`years'.jpg", replace            
+            graph export "${output}deschenes/`source'/harmonized/mortality_pooled_noweight_`source'`method'_`years'.jpg", replace            
 
             cftemp_plot mortality_, `bins_`source'' fe(age_county year) cluster(age_county) control(mprcp1-mprcp11)
-            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_pooled_noweight_`source'_`years'.jpg", replace
+            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_pooled_noweight_`source'`method'_`years'.jpg", replace
 
             cftemp_plot mortality_, `bins_`source'' fe(age_county year_state) cluster(age_county)
-            graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_pooled_noweight_`source'_`years'.jpg", replace
+            graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_pooled_noweight_`source'`method'_`years'.jpg", replace
 
             cftemp_plot mortality_, `bins_`source'' fe(age_county year_state) cluster(age_county) control(mprcp1-mprcp11)
-            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_pooled_noweight_`source'_`years'.jpg", replace
+            graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_pooled_noweight_`source'`method'_`years'.jpg", replace
 
             ************* with trends instead of cftemp
             cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year) cluster(age_county) compare(trends, fips#c.year)
@@ -642,16 +646,16 @@ foreach source in era5_F { //ghcn schlenker era5_F
             foreach ver in naive cftemp {
 
                   cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year) cluster(age_county) compare(`ver' het, hightemp)
-                  graph export "${output}deschenes/`source'/harmonized/mortality_pooled_`source'_`years'_`lab`ver''.jpg", replace
+                  graph export "${output}deschenes/`source'/harmonized/mortality_pooled_`source'`method'_`years'_`lab`ver''.jpg", replace
 
                   cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year) cluster(age_county) control(mprcp1-mprcp11) compare(`ver' het, hightemp)
-                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_pooled_`source'_`years'_`lab`ver''.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_nosyFE/mortality_pooled_`source'`method'_`years'_`lab`ver''.jpg", replace
 
                   cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year_state) cluster(age_county) compare(`ver' het, hightemp)
-                  graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_pooled_`source'_`years'_`lab`ver''.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_noprcp_syFE/mortality_pooled_`source'`method'_`years'_`lab`ver''.jpg", replace
 
                   cftemp_plot mortality_, `bins_`source'' aweights(population_) fe(age_county year_state) cluster(age_county) control(mprcp1-mprcp11) compare(`ver' het, hightemp)
-                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_pooled_`source'_`years'_`lab`ver''.jpg", replace
+                  graph export "${output}deschenes/`source'/replication_mytemp_theirprcp_syFE/mortality_pooled_`source'`method'_`years'_`lab`ver''.jpg", replace
             } */
       
      
@@ -694,27 +698,27 @@ foreach source in era5_F { //ghcn schlenker era5_F
             foreach outcome in lndrate {
                   * Harmonized spec
                   cftemp_plot `outcome', `bins_`source'' omit(7) fe(yearmo statemo) cluster(stfips) compare(cftemp) control(sh_0000 sh_4564 sh_6599 lri sh_0000_monthfe* sh_4564_monthfe* sh_6599_monthfe* lri_monthfe*) aweights(totalpop)
-                  graph export "${output}barreca/`source'/harmonized_`outcome'_cftemp_`source'.jpg", replace
+                  graph export "${output}barreca/`source'/harmonized_`outcome'_cftemp_`source'`method'.jpg", replace
 
                   * No precipitation
                   cftemp_plot `outcome', `bins_`source'' omit(7) fe(yearmo i.statemo#c.year2 i.statemo#c.year) cluster(stfips) compare(cftemp) control(sh_0000 sh_4564 sh_6599 lri sh_0000_monthfe* sh_4564_monthfe* sh_6599_monthfe* lri_monthfe*) aweights(totalpop)
-                  graph export "${output}barreca/`source'/noprcp_`outcome'_cftemp_`source'.jpg", replace
+                  graph export "${output}barreca/`source'/noprcp_`outcome'_cftemp_`source'`method'.jpg", replace
 
                   * No interactions between state-month FE and years
                   cftemp_plot `outcome', `bins_`source'' omit(7) fe(yearmo statemo) cluster(stfips) compare(cftemp) control(devp25 devp75 sh_0000 sh_4564 sh_6599 lri sh_0000_monthfe* sh_4564_monthfe* sh_6599_monthfe* lri_monthfe*) aweights(totalpop)
-                  graph export "${output}barreca/`source'/nosyFE_`outcome'_cftemp_`source'.jpg", replace
+                  graph export "${output}barreca/`source'/nosyFE_`outcome'_cftemp_`source'`method'.jpg", replace
 
                   * Paper spec
                   cftemp_plot `outcome', `bins_`source'' omit(7) fe(yearmo i.statemo#c.year2 i.statemo#c.year) cluster(stfips) compare(cftemp) control(devp25 devp75 sh_0000 sh_4564 sh_6599 lri sh_0000_monthfe* sh_4564_monthfe* sh_6599_monthfe* lri_monthfe*) aweights(totalpop)
-                  graph export "${output}barreca/`source'/paper_`outcome'_cftemp_`source'.jpg", replace
+                  graph export "${output}barreca/`source'/paper_`outcome'_cftemp_`source'`method'.jpg", replace
 
                   /* cftemp_plot rate_`outcome', `bins_`source'' fe(fips year month) cluster(fips) compare(trends, county_month#c.year)
-                  graph export "${output}barreca/`source'/barreca_`outcome'_trends_`source'.jpg", replace */
+                  graph export "${output}barreca/`source'/barreca_`outcome'_trends_`source'`method'.jpg", replace */
             }
       */
       ******************************* Crime (Ranson, 2014) ******************************
 
-            use "`data_month_`source''", clear
+            use "`data_month_`source'`method''", clear
 
             * Merge precipitation
             /* merge 1:1 fips month year using "`prcp_month_`source''"
@@ -748,55 +752,55 @@ foreach source in era5_F { //ghcn schlenker era5_F
             egen county1year = group(fips year)
 
             * Regress by crime category
-            foreach outcome in allcrimes violent nonviolent { //murder rape robbery assaultaggr larceny
-                  foreach method in ols {  //ppml
+            foreach outcome in violent nonviolent { //murder rape robbery assaultaggr larceny
+                  foreach reg in ols {  //ppml
                         /* * First attempt at harmonized
-                        cftemp_plot rate_`outcome', `bins_`source'' fe(fips year month) cluster(fips) compare(none) method(`method')
-                        graph export "${output}other/`source'/crime_`outcome'_cftemp_`method'_`source'_before.jpg", replace
+                        cftemp_plot rate_`outcome', `bins_`source'' fe(fips year month) cluster(fips) compare(none) method(`reg')
+                        graph export "${output}other/`source'/crime_`outcome'_cftemp_`reg'_`source'`method'_before.jpg", replace
 
-                        cftemp_plot rate_`outcome', `bins_`source'' fe(fips year month) cluster(fips) compare(cftemp) method(`method')
-                        graph export "${output}other/`source'/crime_`outcome'_cftemp_`method'_`source'.jpg", replace
+                        cftemp_plot rate_`outcome', `bins_`source'' fe(fips year month) cluster(fips) compare(cftemp) method(`reg')
+                        graph export "${output}other/`source'/crime_`outcome'_cftemp_`reg'_`source'`method'.jpg", replace
 
                         cftemp_plot rate_`outcome', `bins_`source'' fe(fips year month) cluster(fips) compare(trends, county_month#c.year)
-                        graph export "${output}other/`source'/crime_`outcome'_trends_`source'.jpg", replace
+                        graph export "${output}other/`source'/crime_`outcome'_trends_`source'`method'.jpg", replace
 
                         cftemp_plot rate_`outcome', `bins_`source'' fe(fips year month) cluster(fips) compare(5year, county5year year month)
-                        graph export "${output}other/`source'/crime_`outcome'_5year_`source'.jpg", replace
+                        graph export "${output}other/`source'/crime_`outcome'_5year_`source'`method'.jpg", replace
 
                         * Different sets of TWFE (county and month / year and month)
                         cftemp_plot rate_`outcome', `bins_`source'' fe(fips month) cluster(fips) compare(cftemp) 
-                        graph export "${output}other/`source'/crime_`outcome'_fipsmonth_`source'.jpg", replace
+                        graph export "${output}other/`source'/crime_`outcome'_fipsmonth_`source'`method'.jpg", replace
 
                         cftemp_plot rate_`outcome', `bins_`source'' fe(year month) cluster(fips) compare(cftemp) 
-                        graph export "${output}other/`source'/crime_`outcome'_yearmonth_`source'.jpg", replace
+                        graph export "${output}other/`source'/crime_`outcome'_yearmonth_`source'`method'.jpg", replace
 
                         cftemp_plot rate_`outcome', `bins_`source'' fe(fips month) cluster(fips) compare(5year, county5year month)
-                        graph export "${output}other/`source'/crime_`outcome'_5year_fipsmonth_`source'.jpg", replace */
+                        graph export "${output}other/`source'/crime_`outcome'_5year_fipsmonth_`source'`method'.jpg", replace */
 
                         * OLS version of Ranson spec
-                        cftemp_plot rate_`outcome', `bins_`source'' fe(state_month county1year) cluster(fips) compare(cftemp) method(`method')
-                        graph export "${output}other/`source'/crime_paper_`outcome'_cftemp_`method'_`source'.jpg", replace
+                        cftemp_plot rate_`outcome', `bins_`source'' fe(state_month county1year) cluster(fips) compare(cftemp) method(`reg')
+                        graph export "${output}other/`source'/crime_paper_`outcome'_cftemp_`reg'_`source'`method'.jpg", replace
 
                         // I don't know if these make sense
-                        /* cftemp_plot rate_`outcome', `bins_`source'' fe(state_month county1year) cluster(fips) compare(trends, county_month#c.year) method(`method')
-                        graph export "${output}other/`source'/crime_paper_`outcome'_trends_`method'_`source'.jpg", replace */
+                        /* cftemp_plot rate_`outcome', `bins_`source'' fe(state_month county1year) cluster(fips) compare(trends, county_month#c.year) method(`reg')
+                        graph export "${output}other/`source'/crime_paper_`outcome'_trends_`reg'_`source'`method'.jpg", replace */
 
-                        /* cftemp_plot rate_`outcome', `bins_`source'' fe(state_month county1year) cluster(fips) compare(5year, countymonth5year year_month) method(`method')
-                        graph export "${output}other/`source'/crime_paper_`outcome'_5year_`method'_`source'.jpg", replace */
+                        /* cftemp_plot rate_`outcome', `bins_`source'' fe(state_month county1year) cluster(fips) compare(5year, countymonth5year year_month) method(`reg')
+                        graph export "${output}other/`source'/crime_paper_`outcome'_5year_`reg'_`source'`method'.jpg", replace */
                         
                         * Correct version
-                        cftemp_plot rate_`outcome', `bins_`source'' fe(county_month year_month) cluster(fips) compare(cftemp) method(`method')
-                        graph export "${output}other/`source'/crime_harmonized_`outcome'_cftemp_`method'_`source'.jpg", replace
+                        cftemp_plot rate_`outcome', `bins_`source'' fe(county_month year_month) cluster(fips) compare(cftemp) method(`reg')
+                        graph export "${output}other/`source'/crime_harmonized_`outcome'_cftemp_`reg'_`source'`method'.jpg", replace
 
-                        cftemp_plot rate_`outcome', `bins_`source'' fe(county_month year_month) cluster(fips) compare(trends, county_month#c.year) method(`method')
-                        graph export "${output}other/`source'/crime_harmonized_`outcome'_trends_`method'_`source'.jpg", replace
+                        /* cftemp_plot rate_`outcome', `bins_`source'' fe(county_month year_month) cluster(fips) compare(trends, county_month#c.year) method(`reg')
+                        graph export "${output}other/`source'/crime_harmonized_`outcome'_trends_`reg'_`source'.jpg", replace
 
-                        cftemp_plot rate_`outcome', `bins_`source'' fe(county_month year_month) cluster(fips) compare(5year, countymonth5year year_month) method(`method')
-                        graph export "${output}other/`source'/crime_harmonized_`outcome'_5year_`method'_`source'.jpg", replace
+                        cftemp_plot rate_`outcome', `bins_`source'' fe(county_month year_month) cluster(fips) compare(5year, countymonth5year year_month) method(`reg')
+                        graph export "${output}other/`source'/crime_harmonized_`outcome'_5year_`reg'_`source'.jpg", replace */
 
                   }
             }
-      exit
+
       ************ Crops (Schlenker and Roberts, 2009 and additional crops) ***************
             use `yearlydata', clear
             preserve
@@ -815,20 +819,20 @@ foreach source in era5_F { //ghcn schlenker era5_F
                   * Regress by crop
                   foreach outcome in corn wheat soy {
                         cftemp_plot log`outcome'Output, `bins_`source'' fe(fips year) cluster(fips) compare(cftemp)
-                        graph export "${output}other/`source'/crops_`outcome'_cftemp_`source'.jpg", replace
+                        graph export "${output}other/`source'/crops_`outcome'_cftemp_`source'`method'.jpg", replace
 
-                        cftemp_plot log`outcome'Output, `bins_`source'' fe(fips year) cluster(fips) compare(none)
-                        graph export "${output}other/`source'/crops_`outcome'_cftemp_`source'_before.jpg", replace
+                        /* cftemp_plot log`outcome'Output, `bins_`source'' fe(fips year) cluster(fips) compare(none)
+                        graph export "${output}other/`source'/crops_`outcome'_cftemp_`source'`method'_before.jpg", replace
 
                         cftemp_plot log`outcome'Output, `bins_`source'' fe(fips year) cluster(fips) compare(trends, fips#c.year)
                         graph export "${output}other/`source'/crops_`outcome'_trends_`source'.jpg", replace
 
                         cftemp_plot log`outcome'Output, `bins_`source'' fe(fips year) cluster(fips) compare(5year, county5year year)
-                        graph export "${output}other/`source'/crops_`outcome'_5year_`source'.jpg", replace
+                        graph export "${output}other/`source'/crops_`outcome'_5year_`source'.jpg", replace */
                   }
 
             restore
-            exit
+
       ******************************* Population ******************************
             preserve
 
@@ -842,15 +846,15 @@ foreach source in era5_F { //ghcn schlenker era5_F
 
                   * Regress
                   foreach outcome in logTotalPop { //totalPop 
-                        foreach method in ols { //ppml 
-                              cftemp_plot `outcome', `bins_`source'' fe(fips decade) cluster(fips) compare(cftemp) method(`method')
-                              graph export "${output}other/`source'/`outcome'_cftemp_`method'_`source'.jpg", replace
+                        foreach reg in ols { //ppml 
+                              cftemp_plot `outcome', `bins_`source'' fe(fips decade) cluster(fips) compare(cftemp) method(`reg')
+                              graph export "${output}other/`source'/`outcome'_cftemp_`reg'_`source'`method'.jpg", replace
 
-                              cftemp_plot `outcome', `bins_`source'' fe(fips decade) cluster(fips) compare(none) method(`method')
-                              graph export "${output}other/`source'/`outcome'_cftemp_`method'_`source'_before.jpg", replace
+                              /* cftemp_plot `outcome', `bins_`source'' fe(fips decade) cluster(fips) compare(none) method(`reg')
+                              graph export "${output}other/`source'/`outcome'_cftemp_`reg'_`source'`method'_before.jpg", replace
 
-                              cftemp_plot `outcome', `bins_`source'' fe(fips decade) cluster(fips) compare(trends, fips#c.decade) method(`method')
-                              graph export "${output}other/`source'/`outcome'_trends_`method'_`source'.jpg", replace
+                              cftemp_plot `outcome', `bins_`source'' fe(fips decade) cluster(fips) compare(trends, fips#c.decade) method(`reg')
+                              graph export "${output}other/`source'/`outcome'_trends_`reg'_`source'.jpg", replace */
                         }
                   }
 
@@ -871,7 +875,7 @@ foreach source in era5_F { //ghcn schlenker era5_F
                   foreach outcome in returns exemptions agg_income {
                         foreach flow in out in net {
                               cftemp_plot `outcome'_rate_`flow', binsize(10) lb(30) ub(90) omit(6) fe(fips year) cluster(fips) control(exprcp*)
-                              graph export "${output}other/`source'/`outcome'_`flow'rate_cftemp_`source'.jpg", replace
+                              graph export "${output}other/`source'/`outcome'_`flow'rate_cftemp_`source'`method'.jpg", replace
                         }
                   }
             
