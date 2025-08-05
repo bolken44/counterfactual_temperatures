@@ -11,6 +11,8 @@
 source $conda
 conda activate climate
 module load $python
+module load gcc/11.2.0
+module load cmake/3.17.3
 
 module purge
 module use $stata_path
@@ -21,5 +23,5 @@ export STATATMP
 echo "Processing ERA5"
 mkdir -p ../../log/1_1_processERA5/
 
-python 1_1_1_downloadERA5.py > ../../log/1_1_processERA5/${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.txt 2>&1
-stata-mp -b do 1_1_2_processERA5.do
+python 1_1_1_downloadERA5.py ${data} > ../../log/1_1_processERA5/${SLURM_JOB_ID}.txt 2>&1
+stata-mp -b do 1_1_2_processERA5.do ${data}

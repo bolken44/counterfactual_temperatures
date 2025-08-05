@@ -8,7 +8,7 @@
 # Replication Package for "With or Without U?"
 
 # On the terminal, run
-#      `sbatch --partition=sched_mit_econ --mail-user=hnakazawa@povertyactionlab.org --output=climate/repkit/log/MASTER_%A.txt climate/repkit/code/MASTER.sh`
+#      `sbatch --partition=sched_mit_econ --mail-user=hnakazawa@povertyactionlab.org --output=log/MASTER_%A.txt code/MASTER.sh`
 
 #     setting the arguments as appropriate.
 #     - partition: name of the partition that this code runs on the high-performance cluster (HPC)
@@ -22,15 +22,14 @@ export stata_path="/home/software/econ/modulefiles"
 export python="python/3.9.4"
 export conda_path="/orcd/software/core/001/centos7/pkg/miniforge/24.3.0-0/etc/profile.d/conda.sh"
 
-# Root path
-export root="/orcd/home/002/hnaka24/climate/repkit"
+# Root paths
+export data="/orcd/pool/003/hnaka24/climate/repkit/data"
+export repkit="/orcd/home/002/hnaka24/climate/repkit"
 
 ##################################
 # 0. Setup
 
 # Main directories
-export repkit="${root}/repkit"
-export data="${repkit}/data"
 export code="${repkit}/code"
 export output="${repkit}/output"
 export log="${repkit}/log"
@@ -73,18 +72,18 @@ export mailuser=${SLURM_MAIL_USER:-user@example.com}
 #--- Make sure that the following packages are installed on python: numpy, geopy, and tqdm.
 echo "Process raw data"
 process_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=log/1_1_processERA5.txt 1_1_processERA5.sbatch | awk '{print $4}')
-process_id2=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=log/1_2_processPRISM.txt 1_2_processPRISM.sbatch | awk '{print $4}')
-process_id3=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=log/1_3_processGHCN.txt 1_3_processGHCN.sbatch | awk '{print $4}')
+# process_id2=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=log/1_2_processPRISM.txt 1_2_processPRISM.sbatch | awk '{print $4}')
+# process_id3=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=log/1_3_processGHCN.txt 1_3_processGHCN.sbatch | awk '{print $4}')
 
 ##################################
 # 2. Construct Counterfactual Temperature Controls
 echo "Construct counterfactual temperature datasets"
-cftemp_id=$(sbatch --depend=afterok:$process_id:$process_id3 --export=ALL --partition=$partition --mail-user=$mailuser --output=log/2_process_cftemp.txt 2_process_cftemp.sbatch | awk '{print $4}')
+# cftemp_id=$(sbatch --depend=afterok:$process_id:$process_id3 --export=ALL --partition=$partition --mail-user=$mailuser --output=log/2_process_cftemp.txt 2_process_cftemp.sbatch | awk '{print $4}')
 
 ##################################
 # 3. Main Analyses: Simulations (Figure 4, Figure 5, Figure 6c, Figure 7, Figure 9) and Real Outcome Applications (Figure 11)
 echo "Simulations and real outcome applications"
-analysis_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=log/3_analysis.txt 3_analysis.sbatch | awk '{print $4}') #--depend=afterok:$cftemp_id
+# analysis_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=log/3_analysis.txt 3_analysis.sbatch | awk '{print $4}') #--depend=afterok:$cftemp_id
 
 ##################################
 # 4. Bias Table (Table 2) and Power Table (Table 3)

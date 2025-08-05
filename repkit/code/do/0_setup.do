@@ -53,9 +53,6 @@ global install_packages = 0
 /*********************************
 Set Filepaths
 *********************************/
-global root "/orcd/home/002/hnaka24/climate/"
-global repkit "${root}repkit/"
-global data "${repkit}data/"
 global code "${repkit}code/"
 global output "${repkit}output/"
 global log "${repkit}log/"

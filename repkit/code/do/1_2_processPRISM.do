@@ -3,16 +3,21 @@ AUTHOR: Harufumi Nakazawa
 DATE: July 2025
 ACTION: Prepare PRISM dataset
 
-*******************************************************************************/
+*******************************************************************************
+Run setup file
+*********************************/
+args data repkit
+global data "`data'"
+global repkit "`repkit'"
+
+do "${do}0_setup.do"
 
 log using "${log}1_2_processPRISM.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
 /*********************************
-Run setup file
+PRISM
 *********************************/
-do "${do}0_setup.do"
-
 * Keep the grid cell that is closest to the county's centroid
 import delimited "${data}fips_county.csv", clear 
 

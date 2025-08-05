@@ -20,15 +20,20 @@ import time
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.compute as pc
-import numpy as np
+import sys
 
 ##################################
 # Setup
 ##################################
+data = sys.argv[1]
+
 # Input and output directories 
-input_path = '/proj/pbolken/climate/DTA_US'
-output_path = '/proj/pbolken/climate/DTA_yearly'
+input_path = f'{data}/input'
+output_path = f'{data}/output'
 outputFileName = '2m_hourlyTemperature_US_2018_2022.dta'
+
+os.makedirs(input_path, exist_ok=True)
+os.makedirs(output_path, exist_ok=True)
 
 # Deactivate warnings.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -42,8 +47,8 @@ parser.add_argument('-e','--endDate', required=True)
 parser.add_argument('-m','--maxFiles', required=True)
 parser.add_argument('-w','--waitTime', required=True)
 parser.add_argument('-p','--csvPath', required=True)
-parser.add_argument('-s','--startYear', required=True)
-parser.add_argument('-e','--endYear', required=True)
+parser.add_argument('-sy','--startYear', required=True)
+parser.add_argument('-ey','--endYear', required=True)
 args = parser.parse_args()
 
 startDate = args.startDate
