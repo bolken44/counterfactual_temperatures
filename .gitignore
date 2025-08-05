@@ -37,11 +37,18 @@ output/**
 # Except bindev subfolder
 !output/bindev/
 
-# Ignore that specific .tex file
-output/bindev/cftemp_bias_formula_new.tex
+# Ignore all tex files
+output/bindev/*.tex
 
-# Allow all other .tex files in bindev
-!output/bindev/*.tex
+# but track these
+!output/bindev/cftemp_comp_era5_F.tex
+!output/bindev/cftemp_comp_ghcn_ext.tex
+!output/bindev/cftemp_comp_schlenker_F.tex
+!output/bindev/cftemp_comp_prism_1970.tex
+!output/bindev/power_table_era5_F.tex
+!output/bindev/power_table_ghcn_ext.tex
+!output/bindev/power_table_schlenker_F.tex
+!output/bindev/power_table_prism_1970.tex
 ###
 
 ### I think all of these are created when converting a .tex into .pdf

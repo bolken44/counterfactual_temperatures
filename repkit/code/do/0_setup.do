@@ -13,7 +13,39 @@ set more off
 macro drop _all
 
 /*********************************
- Set Switches
+Set Seed
+*********************************/
+set seed 1642
+
+/*********************************
+Declare bin structure
+*********************************/
+local binsize = 10
+local lb = 10
+local ub = 90
+local omit = 6
+global bins = "binsize(`binsize') lb(`lb') ub(`ub') omit(`omit')"
+
+* Bin for below lower bound
+global lb_str = cond(`lb' < 0, "n`=abs(`lb')'", "`lb'") //to create the string "n#" for negative numbers
+local names_bins = "under_`lb_str'"
+
+* Loop through the middle bins
+local ub_bin = `ub'-`binsize'
+forvalues start = `lb'(`binsize')`ub_bin' {
+      local end = `start' + `binsize'
+      local start_label = cond(`start' < 0, "n`=abs(`start')'", "`start'")
+      local end_label = cond(`end' <= 0, "n`=abs(`end')'", "`end'")
+
+      local names_bins = "`names_bins' `start_label'_`end_label'"
+}
+
+* Bin for above upper bound
+global ub_str = cond(`ub' < 0, "n`=abs(`ub')'", "`ub'") //to name the bin real_over_`ub'
+local names_bins = "`names_bins' over_`ub_str'"
+
+/*********************************
+Set Switches
 *********************************/
 * Install package switch
 global install_packages = 0
@@ -21,8 +53,7 @@ global install_packages = 0
 /*********************************
 Set Filepaths
 *********************************/
-
-/* global root "/proj/pbolken/climate/" */
+global root "/orcd/home/002/hnaka24/climate/"
 global repkit "${root}repkit/"
 global data "${repkit}data/"
 global code "${repkit}code/"
@@ -38,24 +69,9 @@ global outcomes "${data}outcomes/"
 global ado "${code}ado/"
 global do "${code}do/"
 
-/*********************************
-Make Directories
-*********************************/
-cap mkdir $temperature
-cap mkdir $output
-cap mkdir $output/tables
-cap mkdir $output/figures
-cap mkdir $output/tables/descriptive
-cap mkdir $output/tables/descriptive/sterfiles
-cap mkdir $output/tables/descriptive/tex
-cap mkdir $output/tables/impacts
-cap mkdir $output/tables/impacts/sterfiles
-cap mkdir $output/tables/impacts/tex
-cap mkdir $output/tables/impacts/csv
-cap mkdir $output/figures/descriptive
-cap mkdir $output/figures/descriptive/pdf
-cap mkdir $output/figures/descriptive/png
-cap mkdir $log
+* Output folders
+global intermediate 
+global density "$output/figures/density"
 
 /*********************************
 Install Required Packages
@@ -76,3 +92,11 @@ adopath + "${ado}"
 run "${ado}cftemp.ado"
 run "${ado}cftemp_sim.ado"
 run "${ado}cftemp_plot.ado"
+
+/*********************************
+Add State Information
+*********************************/
+import delimited "${data}county_centroid.csv", clear
+keep fips state
+
+save "${data}UScounty_state_crosswalk.dta", replace
