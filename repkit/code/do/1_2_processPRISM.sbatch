@@ -15,5 +15,6 @@ STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
 echo "Processing PRISM"
+mkdir -p ../../log/1_2_processPRISM/
 
-stata-mp -b do 1_2_processPRISM.do
+stata-mp -b do 1_2_processPRISM.do ${data} ${repkit}

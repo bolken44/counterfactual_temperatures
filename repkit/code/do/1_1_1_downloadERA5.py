@@ -20,23 +20,6 @@ import time
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.compute as pc
-import sys
-
-##################################
-# Setup
-##################################
-data = sys.argv[1]
-
-# Input and output directories 
-input_path = f'{data}/input'
-output_path = f'{data}/output'
-outputFileName = '2m_hourlyTemperature_US_2018_2022.dta'
-
-os.makedirs(input_path, exist_ok=True)
-os.makedirs(output_path, exist_ok=True)
-
-# Deactivate warnings.
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 ##################################
 # Parse script arguments and create year/month list
@@ -46,18 +29,38 @@ parser.add_argument('-s','--startDate', required=True)
 parser.add_argument('-e','--endDate', required=True)
 parser.add_argument('-m','--maxFiles', required=True)
 parser.add_argument('-w','--waitTime', required=True)
-parser.add_argument('-p','--csvPath', required=True)
 parser.add_argument('-sy','--startYear', required=True)
 parser.add_argument('-ey','--endYear', required=True)
+parser.add_argument('-data','--data', required=True)
+parser.add_argument('-repkit','--repkit', required=True)
 args = parser.parse_args()
 
 startDate = args.startDate
 endDate = args.endDate
 maxFiles = int(args.maxFiles)
 waitTime = int(args.waitTime)
-csvPath = args.csvPath
 startYear = args.startYear
 endYear = args.endYear
+data = args.data
+repkit = args.repkit
+
+##################################
+# Setup
+##################################
+# Input and output directories 
+input_path = f'{data}input/'
+temp = f'{data}temp/'
+intermediate_path = f'{data}intermediate/'
+outputFileName = f'2m_hourlyTemperature_US_{startYear}_{endYear}.dta'
+
+log = f'{repkit}log/1_1_processERA5/'
+
+os.makedirs(input_path, exist_ok=True)
+os.makedirs(temp, exist_ok=True)
+os.makedirs(intermediate_path, exist_ok=True)
+
+# Deactivate warnings.
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Creates a list with the file names between start and end dates.
 monthYearList = pd.date_range(startDate, endDate, freq = 'MS').strftime("%Y-%m").tolist()
@@ -122,11 +125,11 @@ def cdsApiCall(monthYearList, variable = '2m_temperature'):
                 'data_format': 'grib',
                 'download_format': 'unarchived',
             },
-            f'GRIB/India/{variable}_{year}_{month}.grib')
+            f'{input_path}{variable}_{year}_{month}.grib')
 
         endTime = pd.to_datetime("today").strftime('%Y-%m-%d %H:%M:%S')
 
-        with open('grib_log.txt','a+') as file:
+        with open(f'{log}grib_log.txt','a+') as file:
             file.write(f'\n{variable}_{year}_{month}.grib {startTime} {endTime}')
 
         print(f"Finished process for {variable}_{year}_{month}.grib")
@@ -148,7 +151,7 @@ for file in files:
     tries = 0
 
     for i in range(15):
-        csvFiles = list(filter(lambda x: x.startswith('2m_temperature'), os.listdir(f'/tmp/{csvPath}')))
+        csvFiles = list(filter(lambda x: x.startswith('2m_temperature'), os.listdir(f'{temp}')))
         countCsvFiles = len(csvFiles)
         
         if countCsvFiles < maxFiles:
@@ -171,10 +174,10 @@ for file in files:
     for hour in range(1,25):
         # Creates a unformatted csv (with spaces instead of commas to separate and some issues with titles)
         print(f'Writing unformatted csv files {hour}/24. This may take a few minutes...')
-        os.system(f'grib_get_data -F "%.2f" -p date,step -w step={hour} GRIB/India/{file} > /tmp/{csvPath}/{fileName}_unformatted.csv')
+        os.system(f'grib_get_data -F "%.2f" -p date,step -w step={hour} {input_path}{file} > {temp}{fileName}_unformatted.csv')
  
-        inputFile  = open(f'/tmp/{csvPath}/{fileName}_unformatted.csv', 'r')
-        outputFile = open(f'/tmp/{csvPath}/{fileName}.csv', 'w')
+        inputFile  = open(f'{temp}{fileName}_unformatted.csv', 'r')
+        outputFile = open(f'{temp}{fileName}.csv', 'w')
 
         # Titles repeat for each date in the file so this checks is used to avoid repeated title rows.
         firstLine = True
@@ -202,13 +205,13 @@ for file in files:
 
         # Removes intermediate csv file.
         print('Done! Removing unformatted csv...')
-        os.system(f'rm /tmp/{csvPath}/{fileName}_unformatted.csv')
+        os.system(f'rm {temp}{fileName}_unformatted.csv')
 
         # Collapsing the grid at a coarser level
         granularity = 0.5
 
         print(f'Collapsing to a {granularity}x{granularity} grid ...')
-        table = csv.read_csv(f'/tmp/{csvPath}/{fileName}.csv')
+        table = csv.read_csv(f'{temp}{fileName}.csv')
 
         # Change schema of table to improve efficiency
         new_schema = pa.schema([('Latitude', pa.float32()), ('Longitude', pa.float32()), ('Value', pa.float32()), ('date', pa.int32()), ('step', pa.int8())])
@@ -236,28 +239,28 @@ for file in files:
 
         # Compressing formatted csv 
         print('Compressing CSV...')
-        with pa.CompressedOutputStream(f'/tmp/{csvPath}/{fileName}_hr{hour}.csv.bz2', "bz2") as out:
+        with pa.CompressedOutputStream(f'{temp}{fileName}_hr{hour}.csv.bz2', "bz2") as out:
             csv.write_csv(group_value, out)
 
         # Removes uncompressed csv file.
         print(f'Done with file {hour}/24! Removing uncompressed csv... \n')
-        os.system(f'rm /tmp/{csvPath}/{fileName}.csv')
+        os.system(f'rm {temp}{fileName}.csv')
 
     # Append all 24 datasets into one
     print('Starting to append all files ...')
     for hour in range(1,25):
         if hour == 1:
-            table = csv.read_csv(f'/tmp/{csvPath}/{fileName}_hr{hour}.csv.bz2')
+            table = csv.read_csv(f'{temp}{fileName}_hr{hour}.csv.bz2')
         else:
-            new_table = csv.read_csv(f'/tmp/{csvPath}/{fileName}_hr{hour}.csv.bz2')
+            new_table = csv.read_csv(f'{temp}{fileName}_hr{hour}.csv.bz2')
             table = pa.concat_tables([table, new_table])
         
         # Remove hourly csv
-        os.system(f'rm /tmp/{csvPath}/{fileName}_hr{hour}.csv.bz2')
+        os.system(f'rm {temp}{fileName}_hr{hour}.csv.bz2')
 
     # Compressing final csv 
     print('Compressing final CSV... \n')
-    with pa.CompressedOutputStream(f'/tmp/{csvPath}/{fileName}.csv.bz2', "bz2") as out:
+    with pa.CompressedOutputStream(f'{temp}{fileName}.csv.bz2', "bz2") as out:
         csv.write_csv(table, out)
 
 print('All files have been processed! \n')
@@ -276,7 +279,7 @@ for year in yearList:
 		
 		print(f'Starting year {year} and month {month}...')
 		
-		df_new = csv.read_csv(f'{input_path}/{file_path}').to_pandas()
+		df_new = csv.read_csv(f'{input_path}{file_path}').to_pandas()
 		df = pd.concat([df, df_new], ignore_index=True)
 
 # Drop unnecessary columns
@@ -286,5 +289,5 @@ df = df.drop(columns=['','date_adjusted','timezone_name','timezone_value','step'
 df = df.rename(columns={'Value':'temperature', 'year_adjusted': 'year', 'month_adjusted':'month', 'day_adjusted':'day', 'hour_adjusted':'hour','Latitude':'latitude','Longitude':'longitude'})
 
 # Save file
-df.to_stata(f'{output_path}/{outputFileName}', write_index = False)
+df.to_stata(f'{intermediate_path}{outputFileName}', write_index = False)
 print('Saved as .dta!')

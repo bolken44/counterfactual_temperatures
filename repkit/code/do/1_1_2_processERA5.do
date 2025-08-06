@@ -1,6 +1,26 @@
+/*******************************************************************************
+AUTHOR: Harufumi Nakazawa
+DATE: August 2025
+ACTION: Processes the raw ERA 5 Land data
 
+*******************************************************************************
+Run setup file
+*********************************/
+args data repkit startyear endyear
+global data "`data'"
+global repkit "`repkit'"
 
-use "/proj/pbolken/climate/DTA_US/2m_temperature_US_1970_2023.dta", clear
+log using "${repkit}log/1_1_processERA5/1_1_2_processERA5.txt", text replace
+
+do "${repkit}code/do/0_setup.do"
+
+/* log using "${log}1_1_processERA5.txt", text replace */
+display "Current time: " c(current_date) " " c(current_time)
+
+/*********************************
+Construct county-level ERA 5 data
+*********************************/
+use "${data}/output/2m_hourlyTemperature_US_`startyear'_`endyear'.dta", clear
 
 tempfile temperatureERALand
 save `temperatureERALand'
@@ -21,7 +41,7 @@ tempfile temperatureCoordinates
 save `temperatureCoordinates', replace
 
 * county coordinates
-import delimited "countyShapefiles/county_centroid.csv", clear
+import delimited "${data}/county_centroid.csv", clear
 
 geonear fips latitude longitude using `temperatureCoordinates', neighbors(coordinateId latitude longitude)
 
@@ -49,4 +69,4 @@ merge m:1 latitude longitude year month using `temperatureERALand'
 keep if _merge == 3
 drop _merge
 
-save "DTA_US/countyLevel_US_1970_2019.dta", replace
+save "${intermediate}countyLevel_US_1970_2019.dta", replace

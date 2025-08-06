@@ -10,9 +10,9 @@ args data repkit
 global data "`data'"
 global repkit "`repkit'"
 
-do "${do}0_setup.do"
+do "${repkit}code/do/0_setup.do"
 
-log using "${log}1_2_processPRISM.txt", text replace
+log using "${log}/1_2_processPRISM/1_2_processPRISM.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
 /*********************************
@@ -105,4 +105,4 @@ gen month = month(dateNum)
 bysort year: egen avgMaxTemp = mean(tMax)
 bysort year: egen medianMaxTemp = median(tMax)
 
-save "${raw}prism_appended.dta", replace
+save "${intermediate}prism_appended.dta", replace

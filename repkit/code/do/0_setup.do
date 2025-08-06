@@ -8,9 +8,8 @@
 */
 /**********************************************************************/
 
-clear all
+clear
 set more off
-macro drop _all
 
 /*********************************
 Set Seed
@@ -59,6 +58,7 @@ global log "${repkit}log/"
 
 * Data folders
 global raw "${data}raw/"
+global intermediate "${data}intermediate/"
 global temperature "${data}temperature/"
 global outcomes "${data}outcomes/"
 
@@ -74,12 +74,13 @@ global density "$output/figures/density"
 Install Required Packages
 *********************************/
 if $install_packages == 1 {
-      ssc install ftools
-      ssc install gtools
-      ssc install reghdfe
-      ssc install parallel
-      ssc install ereplace
-      ssc install geodist
+      ssc install ftools, replace
+      ssc install gtools, replace
+      ssc install reghdfe, replace
+      ssc install parallel, replace
+      ssc install ereplace, replace
+      ssc install geodist, replace
+      ssc install geonear, replace
 }
 
 /*********************************
