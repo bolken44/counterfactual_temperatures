@@ -48,7 +48,7 @@ repkit = args.repkit
 # Setup
 ##################################
 # Input and output directories 
-input_path = f'{data}input/'
+input_path = f'{data}raw/ERA5_Land/'
 temp = f'{data}temp/'
 intermediate_path = f'{data}intermediate/'
 outputFileName = f'2m_hourlyTemperature_US_{startYear}_{endYear}.dta'

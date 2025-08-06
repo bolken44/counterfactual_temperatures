@@ -2,15 +2,17 @@
 AUTHOR: Harufumi Nakazawa
 DATE: March 2025
 ACTION: All real Y, real T regressions.
-*******************************************************************************/
-
-log using "${log}3_2_real_outcomes.txt", text replace
-display "Current time: " c(current_date) " " c(current_time)
-
-/*********************************
+*******************************************************************************
 Run setup file
 *********************************/
-do "${do}0_setup.do"
+args data repkit
+global data "`data'"
+global repkit "`repkit'"
+
+do "${repkit}code/do/0_setup.do"
+
+log using "${log}3_2_real_outcomes/3_2_real_outcomes.txt", text replace
+display "Current time: " c(current_date) " " c(current_time)
 
 /*********************************
 * Add outcome variables

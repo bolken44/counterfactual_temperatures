@@ -2,23 +2,22 @@
 AUTHOR: Harufumi Nakazawa
 DATE: June 2025 - this code parallelizes reformed_bias_table.do for the cluster.
 ACTION: Creates tables to compare binning bias across different cftemp versions.
-*******************************************************************************/
-
-/*********************************
-Set Up SLURM
+*******************************************************************************
+Set Up
 *********************************/
-** Get Slurm ID
-args task
+** Get Slurm ID and paths
+args task data repkit
 local task = real("`task'")
 global task = `task'
+global data "`data'"
+global repkit "`repkit'"
 
-log using "${home}log/4_1_bias_table/row_`task'.txt", text replace
+** Run setup file
+do "${repkit}code/do/0_setup.do"
+
+** Log
+log using "${log}4_1_bias_table/row_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
-
-/*********************************
-Run Setup File
-*********************************/
-do "${do}0_setup.do"
 
 /*********************************
 Select Dataset and Method to Run

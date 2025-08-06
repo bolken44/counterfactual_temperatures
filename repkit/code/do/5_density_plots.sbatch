@@ -14,4 +14,6 @@ module load $stata_ver
 STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
-stata-mp -b do 5_density_plots.do
+mkdir -p ../../log/5_density_plots/
+
+stata-mp -b do 5_density_plots.do ${data} ${repkit}

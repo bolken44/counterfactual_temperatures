@@ -14,4 +14,6 @@ module load $stata_ver
 STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
-stata-mp -b do 4_3_append_files.do
+mkdir -p ../../log/4_3_append_files/
+
+stata-mp -b do 4_3_append_files.do ${data} ${repkit}

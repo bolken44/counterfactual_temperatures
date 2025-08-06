@@ -16,5 +16,6 @@ STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
 echo "Running task ID: $SLURM_ARRAY_TASK_ID"
+mkdir -p ../../log/2_process_cftemp/
 
 stata-mp -b do 2_process_cftemp.do ${SLURM_ARRAY_TASK_ID}

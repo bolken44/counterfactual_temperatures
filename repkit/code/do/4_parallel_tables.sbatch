@@ -16,6 +16,8 @@ STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
 echo "Running task ID: $SLURM_ARRAY_TASK_ID"
+mkdir -p ../../log/4_1_parallel_bias_table/
+mkdir -p ../../log/4_2_parallel_power/
 
-stata-mp -b do climate/4_1_parallel_bias_table.do ${SLURM_ARRAY_TASK_ID}
-stata-mp -b do climate/4_2_parallel_power.do ${SLURM_ARRAY_TASK_ID}
+stata-mp -b do climate/4_1_parallel_bias_table.do ${SLURM_ARRAY_TASK_ID} ${data} ${repkit}
+stata-mp -b do climate/4_2_parallel_power.do ${SLURM_ARRAY_TASK_ID} ${data} ${repkit}

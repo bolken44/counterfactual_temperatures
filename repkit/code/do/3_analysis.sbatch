@@ -14,5 +14,8 @@ module load $stata_ver
 STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
+mkdir -p ../../log/3_1_simulations/
+mkdir -p ../../log/3_2_real_outcomes/
+
 stata-mp -b do 3_1_simulations.do
 stata-mp -b do 3_2_real_outcomes.do

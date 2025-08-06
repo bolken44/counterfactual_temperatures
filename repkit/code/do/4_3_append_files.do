@@ -4,15 +4,17 @@ DATE: June 2025
 ACTION: 
       Appends files created by parallel_bias_table.do
       Plots the density of sim 2 coefficients and t-stats
-*******************************************************************************/
-
-log using "${log}4_3_append_files.txt", text replace
-display "Current time: " c(current_date) " " c(current_time)
-
-/*********************************
-Run Setup File
+*******************************************************************************
+Set Up
 *********************************/
-do "${do}0_setup.do"
+args data repkit
+global data "`data'"
+global repkit "`repkit'"
+
+do "${repkit}code/do/0_setup.do"
+
+log using "${log}4_3_append_files/4_3_append_files.txt", text replace
+display "Current time: " c(current_date) " " c(current_time)
 
 /*********************************
 Locals

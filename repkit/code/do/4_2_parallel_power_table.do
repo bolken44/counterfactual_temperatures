@@ -1,23 +1,22 @@
 /*******************************************************************************
 AUTHOR: Harufumi Nakazawa
 DATE: June 2025 - this code parallelizes sim2_power.do
-*******************************************************************************/
-
-/*********************************
-Set Up SLURM
+*******************************************************************************
+Set Up
 *********************************/
-** Get Slurm ID
-args task
+** Get Slurm ID and paths
+args task data repkit
 local task = real("`task'")
 global task = `task'
+global data "`data'"
+global repkit "`repkit'"
 
-log using "${home}log/4_2_power_table/row_`task'.txt", text replace
+** Run setup file
+do "${repkit}code/do/0_setup.do"
+
+** Log
+log using "${log}4_2_power_table/row_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
-
-/*********************************
-Run Setup File
-*********************************/
-do "${do}0_setup.do"
 
 /*********************************
 Select Dataset and Method to Run
