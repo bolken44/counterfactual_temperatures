@@ -20,7 +20,7 @@ display "Current time: " c(current_date) " " c(current_time)
 /*********************************
 Construct county-level ERA 5 data
 *********************************/
-use "${data}/output/2m_hourlyTemperature_US_`startyear'_`endyear'.dta", clear
+use "${temp}2m_hourlyTemperature_US_`startyear'_`endyear'.dta", clear
 
 tempfile temperatureERALand
 save `temperatureERALand'
@@ -41,7 +41,7 @@ tempfile temperatureCoordinates
 save `temperatureCoordinates', replace
 
 * county coordinates
-import delimited "${data}/county_centroid.csv", clear
+import delimited "${data}county_centroid.csv", clear
 
 geonear fips latitude longitude using `temperatureCoordinates', neighbors(coordinateId latitude longitude)
 
@@ -69,4 +69,4 @@ merge m:1 latitude longitude year month using `temperatureERALand'
 keep if _merge == 3
 drop _merge
 
-save "${intermediate}countyLevel_US_1970_2019.dta", replace
+save "${intermediate}era5Land_countylevel_1970_2019.dta", replace

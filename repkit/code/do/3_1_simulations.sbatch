@@ -1,9 +1,10 @@
 #!/bin/bash
-#SBATCH --job-name=3_analysis
+#SBATCH --job-name=3_1_simulations
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
+#SBATCH --array=1-2
 
-#SBATCH --mem=160GB
+#SBATCH --mem=100GB
 #SBATCH --time=10:30:00
 
 #SBATCH --mail-type=all
@@ -15,7 +16,6 @@ STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
 mkdir -p ../../log/3_1_simulations/
-mkdir -p ../../log/3_2_real_outcomes/
 
-stata-mp -b do 3_1_simulations.do
-stata-mp -b do 3_2_real_outcomes.do
+echo "Run simulations with task ID: $SLURM_ARRAY_TASK_ID"
+stata-mp -b do 3_1_simulations.do ${data} ${repkit} ${SLURM_ARRAY_TASK_ID}

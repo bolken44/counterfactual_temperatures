@@ -20,7 +20,7 @@ args task
 local task = real("`task'")
 global task = `task'
 
-log using "${home}log/power_table/row_`task'.txt", text replace
+log using "${home}log/power_table/row_allbins_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
 ********************************************************************************
@@ -30,8 +30,8 @@ adopath + "${home}/cftemp"
 run "${home}/cftemp/cftemp_sim.ado"
 
 * Declare which one
-local sources "era5_F schlenker_F ghcn_ext prism_1970"
-local methods "naive stateyearFE lag3 trends 5year year year_bayes avgtrend avgtrend_bayes chebyshev splines aggregate"
+local sources "era5_F" // schlenker_F ghcn_ext prism_1970
+local methods "naive stateyearFE lag3 trends 5year year year_bayes chebyshev" //avgtrend avgtrend_bayes splines aggregate
 
 * Compute the total number of methods
 local n_methods : word count `methods'
@@ -364,8 +364,8 @@ foreach bin in under_`lb_str' over_`ub_str' {
 }
 
 * Loop through powers
-foreach power in effect5 { //linear quadratic cubic
-      cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(linear, 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips) extreme effect(5)
+foreach power in linear quadratic cubic { //linear quadratic cubic
+      cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(`power', 1) `bins_`source'' compare(`compare') fe(fips year) cluster(fips)
 
       foreach bin in under_`lb_str' over_`ub_str' {
 

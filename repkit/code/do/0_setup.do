@@ -58,6 +58,7 @@ global log "${repkit}log/"
 
 * Data folders
 global raw "${data}raw/"
+global temp "${data}temp/"
 global intermediate "${data}intermediate/"
 global temperature "${data}temperature/"
 global outcomes "${data}outcomes/"
@@ -67,8 +68,9 @@ global ado "${code}ado/"
 global do "${code}do/"
 
 * Output folders
-global intermediate 
-global density "$output/figures/density"
+global simulations "$output/figures/simulations/"
+global density "$output/figures/density/"
+global real_outcomes "$output/figures/real_outcomes/"
 
 /*********************************
 Install Required Packages

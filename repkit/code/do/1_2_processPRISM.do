@@ -84,18 +84,22 @@ foreach f of local fipsList{
 		keep dateNum tMax fips
 		
 		* save yearly file for a given fips
-		tempfile base`f'_`year'
-		save `base`f'_`year'', replace
-		
+		tempfile base_`year'
+		save `base_`year'', replace
 	}
+
+	* Append all years for this fip
+	clear
+	forvalues year = 1950/2019{
+		append using `base_`year''
+	}
+	save "${temp}fips`f'_all.dta", replace
 }
 
 * Append all fips and years
 clear
 foreach f of local fipsList{
-	forvalues year = 1950/2019{
-		append using `base`f'_`year''
-	}
+	append using "${temp}fips`f'_all.dta"
 }
 
 * Prepare
@@ -105,4 +109,4 @@ gen month = month(dateNum)
 bysort year: egen avgMaxTemp = mean(tMax)
 bysort year: egen medianMaxTemp = median(tMax)
 
-save "${intermediate}prism_appended.dta", replace
+save "${intermediate}prism_countylevel_1950_2019.dta", replace

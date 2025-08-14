@@ -202,19 +202,19 @@ foreach source in era5_F { //schlenker_F ghcn_ext
 
             ********************************* Simulations
             * Loop over naive and comparisons
-            foreach ver in cftemp { // cftemp none trends lag1 lag3 lag5 fe
+            foreach ver in none { // cftemp none trends lag1 lag3 lag5 fe
 
                   * Linear trends
                   foreach slope in 1 { //forval slope = -1(1)1
                         local slope_str = cond(`slope' == -1, "neg1", "`slope'")
 
-                        /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) outcome(linear, `slope') `bins_`source'' `compare_`ver'' cluster(fips)
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) outcome(linear, `slope') `bins_`source'' `compare_`ver'' cluster(fips)
                         cap mkdir "${output}sim2/`source'_`method'/"
                         cap mkdir "${output}sim2/`source'_`method'/`ver'/"
-                        graph export "${output}sim2/`source'_`method'/`ver'/sim2_`ver'_lin`slope_str'_`source'_`method'.pdf", replace */
+                        graph export "${output}sim2/`source'_`method'/`ver'/sim2_`ver'_lin`slope_str'_`source'_`method'.pdf", replace
 
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) outcome(linear, `slope') `bins_`source'' `compare_`ver'' cluster(fips) effect(5)
-                        graph export "${output}sim2/`source'_`method'/`ver'/sim2_`ver'_lin`slope_str'_effect5_`source'_`method'.pdf", replace
+                        /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) outcome(linear, `slope') `bins_`source'' `compare_`ver'' cluster(fips) effect(5)
+                        graph export "${output}sim2/`source'_`method'/`ver'/sim2_`ver'_lin`slope_str'_effect5_`source'_`method'.pdf", replace */
 
                   }
 

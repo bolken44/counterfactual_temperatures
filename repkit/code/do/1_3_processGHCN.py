@@ -13,8 +13,8 @@ import sys
 
 data = sys.argv[1]
 raw = f'{data}raw/'
-intermediate_path = f'{data}intermediate/'
-ghcn = f"{data}raw/ghcnd_all/"
+temp = f'{data}temp/'
+ghcn = f"{data}raw/GHCN/"
 
 task_id = int(os.environ.get("SLURM_ARRAY_TASK_ID"))
 num_cores = int(os.environ.get("SLURM_CPUS_PER_TASK", 1))
@@ -233,7 +233,7 @@ def read_ghcn_data_file(filename, variables, include_flags, dropna):
 
 ################################################################################
 # First read the metadata
-metadf = read_station_metadata(f"{raw}ghcnd-stations.txt")
+metadf = read_station_metadata(f"{ghcn}ghcnd-stations.txt")
 variables=['TMAX', 'TMIN', 'PRCP']
 
 # Subset to stations in the US with elevations less than 7000 ft
@@ -324,12 +324,12 @@ for county_fips, stations in stations_within_radius.items():
       
       # Loop through each station in the county
       for station_id, distance in stations:
-            if not os.path.exists(f"{ghcn}{station_id}.dly"):
+            if not os.path.exists(f"{ghcn}ghchd_all/{station_id}.dly"):
                   continue
 
             # Read the station's data
             ds = read_ghcn_data_file(
-                  filename=f"{ghcn}{station_id}.dly", 
+                  filename=f"{ghcn}ghchd_all/{station_id}.dly", 
                   variables=variables, 
                   include_flags=False, 
                   dropna=True
@@ -390,8 +390,6 @@ final_df['TMIN'] = (final_df['TMIN'] * 9/50) + 32
 # Convert PRCP from tenth of mm to hundredths of inches
 final_df['PRCP'] = (final_df['PRCP'] * 100/254)
 
-final_df.to_stata(f"{intermediate_path}ghcn_countylevel_full.dta", write_index=False)
-
 # Extract year, month, and day into separate columns
 final_df['date'] = pd.to_datetime(final_df['date'])
 final_df['year'] = final_df['date'].dt.year
@@ -400,5 +398,5 @@ final_df['day'] = final_df['date'].dt.day
 
 final_df = final_df[(final_df['year'] >= 1968) & (final_df['year'] <= 2016)]
 
-final_df.to_stata(f"{intermediate_path}ghcn_countylevel_1968_2016_{task_id}.dta", write_index=False)
-print(f"County-day level data saved to {intermediate_path}ghcn_countylevel_1968_2016.dta.")
+final_df.to_stata(f"{temp}ghcn_countylevel_1968_2016_{task_id}.dta", write_index=False)
+print(f"County-day level data saved to {temp}ghcn_countylevel_1968_2016.dta.")

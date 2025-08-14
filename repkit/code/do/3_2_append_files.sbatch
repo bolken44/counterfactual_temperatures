@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=4_3_append_files
+#SBATCH --job-name=3_2_append_files
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 
@@ -14,6 +14,6 @@ module load $stata_ver
 STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
-mkdir -p ../../log/4_3_append_files/
+mkdir -p ../../log/3_2_append_files/
 
-stata-mp -b do 4_3_append_files.do ${data} ${repkit}
+stata-mp -b do 3_2_append_files.do ${data} ${repkit}

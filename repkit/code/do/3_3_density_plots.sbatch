@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=5_density_plots
+#SBATCH --job-name=3_3_density_plots
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 
@@ -14,6 +14,6 @@ module load $stata_ver
 STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
-mkdir -p ../../log/5_density_plots/
+mkdir -p ../../log/3_3_density_plots/
 
-stata-mp -b do 5_density_plots.do ${data} ${repkit}
+stata-mp -b do 3_3_density_plots.do ${data} ${repkit}

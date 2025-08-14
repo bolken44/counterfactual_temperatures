@@ -1,179 +1,294 @@
 /*******************************************************************************
 AUTHOR: Harufumi Nakazawa
-DATE: April 2025
+DATE: July 2025
 ACTION: Runs all simulations.
 *******************************************************************************
 Set Up
 *********************************/
-args data repkit
+args data repkit task
 global data "`data'"
 global repkit "`repkit'"
 
 do "${repkit}code/do/0_setup.do"
+global pool "/orcd/pool/003/hnaka24/climate/"
+global weather "${pool}processed/"
 
-log using "${log}3_1_simulations/3_1_simulations.txt", text replace
+log using "${log}3_1_simulations/3_1_simulations_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
 /*********************************
-Add average annual temperature for adaptation spec
+Parallelize temperature data source and control methods
+*********************************/
+* Declare which ones
+local sources  "era5" // prism_1950 prism_1970 ghcn
+local methods  "naive" //stateyearFE lag3 trends 5year year year_bayes chebyshev
+local binforms "allbins extreme"
+
+* Count items in each dimension
+local n_sources  : word count `sources'
+local n_methods  : word count `methods'
+local n_binforms : word count `binforms'
+
+* Figure out indices based on task ID (corrected)
+local s_index  = ceil(`task' / (`n_methods' * `n_binforms'))
+local temp     = mod(`task'-1, (`n_methods' * `n_binforms'))
+local m_index  = ceil((`temp' + 1) / `n_binforms')
+local b_index  = mod(`task'-1, `n_binforms') + 1
+
+* Get the actual values
+local source  : word `s_index'  of `sources'
+local method  : word `m_index'  of `methods'
+local binform : word `b_index'  of `binforms'
+
+* Print to verify
+di "Slurm task `task': source=`source', method=`method', binform=`binform'"
+
+* Make save folder
+cap mkdir "${simulations}sim1/"
+cap mkdir "${simulations}sim2/"
+cap mkdir "${simulations}sim3/"
+
+/*********************************
+Add average annual temperature -- should be deleted later
 *********************************/
 * GHCN yearly averages
-/* use "${path}Haru/processed/ghcn_UScountylevel_1968_2016.dta", clear
-drop if year > 2019 | year < 1970
+if "`source'" == "ghcn"{
+      use "${weather}ghcn_UScountylevel_1968_2016.dta", clear
+      drop if year > 2019 | year < 1970
 
-gen tmean = (TMAX + TMIN) / 2
-bysort fips year: egen avg_yearly_temp = mean(tmean)
-keep fips year avg_yearly_temp
-duplicates drop
+      gen tmean = (TMAX + TMIN) / 2
+      bysort fips year: egen avg_yearly_temp = mean(tmean)
+      keep fips year avg_yearly_temp
+      duplicates drop
+}
 
-tempfile ghcn_ext_avgtemp
-save `ghcn_ext_avgtemp' */
-
-* PRISM yearly averages
-/* use "${path}Haru/data/PRISM_Schlenker/appended.dta", clear
-drop if year > 2019 | year < 1970
-
-bysort fips year: egen avg_yearly_temp = mean(tMax)
-keep fips year avg_yearly_temp
-duplicates drop
-
-tempfile schlenker_F_avgtemp
-save `schlenker_F_avgtemp'  */
+* PRISM yearly averages (1950-2019)
+if strpos("`source'", "prism") {
+      use "${pool}data/appended.dta", clear
+      if "`source'" == "prism_1970" {
+            drop if year > 2019 | year < 1970
+      }
+      
+      replace tMax = (tMax * 9 / 5) + 32
+      bysort fips year: egen avg_yearly_temp = mean(tMax)
+      keep fips year avg_yearly_temp
+      duplicates drop
+}
 
 * ERA 5 yearly averages
-use "${raw}countyLevel_USPanel_1970_2019.dta", clear
-      //this uses ERA Land, not ERA 5
+if "`source'" == "era5"{
+      /* use "${raw}countyLevel_USPanel_1970_2019.dta", clear
+            //this uses ERA Land, not ERA 5
 
-drop if year > 2019 | year < 1970
-keep fips year avg_yearly_temp //avg_yearly_temp uses whole day avg not daytime avg
-/* replace avg_yearly_temp = (avg_yearly_temp * 9 / 5) + 32 */
-duplicates drop
+      drop if year > 2019 | year < 1970
+      keep fips year avg_yearly_temp //avg_yearly_temp uses whole day avg not daytime avg
+      replace avg_yearly_temp = (avg_yearly_temp * 9 / 5) + 32
+      duplicates drop */
 
-tempfile era5_F_avgtemp
-save `era5_F_avgtemp'
+      use "${weather}countyannual_US_1970_2019.dta", clear
+}
+
+tempfile `source'_avgtemp
+save ``source'_avgtemp', replace
+
+/*********************************
+Locals for table
+*********************************/
+local title_era5 = "ERA 5"
+local title_prism_1950 = "PRISM"
+local title_prism_1970 = "PRISM (1970-2019)"
+local title_ghcn = "GHCN"
+
+local sample_era5 = "The sample period is 1970-2019 for ERA Land 5."
+local sample_prism_1950 = "The sample period is 1950-2019 for this version of PRISM."
+local sample_prism_1970 = "The sample period is 1970-2019 for this version of PRISM."
+local sample_ghcn = "The sample period is 1970-2016 for GHCN."
+
+local title_naive = "No correction"
+local title_adapt0 = "No correction (Cold Counties)"
+local title_adapt1 = "No correction (Hot Counties)"
+local title_stateyearFE = "State-Year Fixed Effects"
+local title_lag3 = "With 3 Lags"
+local title_trends = "County-Specific Linear Trends"
+local title_5year = "County-5 Year Fixed Effects"
+local title_year = "Lin. in Year"
+local title_year_bayes = "Lin. in Year + Bayes"
+local title_avgtrend = "Lin. in Natl Avg"
+local title_avgtrend_bayes = "Lin. in Natl Avg + Bayes"
+local title_splines = "Splines in Year"
+local title_chebyshev = "Chebyshev"
+local title_aggregate = "Aggregate \(\pm\)5 Years"
+
+// start of loop
+global source = "`source'"
+global method = "`method'"
+
+local data_`source'_naive = "`data_`source'_year'"
+local data_`source'_adapt0 = "`data_`source'_year'"
+local data_`source'_adapt1 = "`data_`source'_year'"
+local data_`source'_trends = "`data_`source'_year'"
+local data_`source'_stateyearFE = "`data_`source'_year'"
+local data_`source'_lag3 = "`data_`source'_year'"
+local data_`source'_5year = "`data_`source'_year'"
+
+local row = "`row' \midrule \multirow{8}{*}{`title_`source''}"
 
 /*********************************
 Locals
 *********************************/
-local compare_none "compare(none) fe(fips year)"
-local compare_cftemp "compare(naive cftemp) fe(fips year)"
-forval lags = 1(2)5 {
-      local compare_lag`lags' "compare(naive lags, `lags') fe(fips year)"
-}
-local compare_trends "compare(naive trends, fips#c.year) fe(fips year)"
-local compare_5year "compare(naive 5year, county5year year) fe(fips year)"
-/* local compare_fe "fe(fips year year##stateCode)" */
+local base_era5 = 1980
+local base_prism_1950 = 1960
+local base_prism_1970 = 1980
+local base_ghcn = 1980
 
 local graph_neg1 "yscale(range(-3 1)) ylabel(-3(.5)1)"
 local graph_0 "yscale(range(-.1 .1)) ylabel(-.1(.05).1)"
 local graph_1 "yscale(range(-1.5 3.5)) ylabel(-1.5(.5)3.5)"
 
+local compare1 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "sim")))))
+
+local compare2 = cond(strpos("`method'", "naive") > 0 | strpos("`method'", "adapt") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "cftemp"))))) //different from sim 1 compare! cftemp instead of sim
+
 /*********************************
-Run
+Main script
 *********************************/
-foreach source in era5 prism_1950 prism_1970 ghcn {
-      
-      foreach method in year { // naive trends year year_bayes splines avgtrend avgtrend_bayes chebyshev  era5_F_bayes era5_F_avgtrend era5_F_avgtrend_bayes era5_F_chebyshev
+      * Counterfactual temperature controls
+      if "`method'" == "year" | "`method'" == "year_bayes" | "`method'" == "chebyshev" {
+            use "${temperature}`source'_UScounty_cftemp_F_`method'.dta", clear
+      }
+      * Reduced Form Methods
+      else {
+            /* use "${temperature}`source'_UScounty_cftemp_F_year.dta", clear */
+            use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
+      }
 
-            * Prepare dataset
-            use "`data_`source'_`method''", clear
+      xtset fips year
+      drop if year > 2019 | year < 1970
 
-            log using "${path}Haru/log/sim2_`source'_`method'.txt", text replace
-            display "Current time: " c(current_date) " " c(current_time)
+      * Merge average temps
+      merge m:1 year fips using ``source'_avgtemp'
+      keep if _merge == 3
+      drop _merge
 
-            xtset fips year
-            drop if year > 2019 | year < 1970
+      * add state information
+      merge m:1 fips using "${data}UScounty_state_crosswalk.dta"
+      egen stateCode = group(state)
+      drop if state == "AK" | state == "PR" | state == "HI"
 
-            * add state information
-            merge m:1 fips using "${data}UScounty_state_crosswalk.dta"
-            /* drop if _merge != 3 */
-            drop _merge
-            egen stateCode = group(state)
-            drop if state == "AK" | state == "PR" | state == "HI"
+      * create pre period temperature
+      gen baselinePeriodTemp = avg_yearly_temp if year <= `base_`source''
+      bysort fips: ereplace baselinePeriodTemp = mean(baselinePeriodTemp)
 
-            * create pre period temperature
-            gen baselinePeriodTemp = avg_yearly_temp if year <= 1980
-            bysort fips: ereplace baselinePeriodTemp = mean(baselinePeriodTemp)
+      * create numeric variable for year
+      gen agno = year
+      sum year
+      replace year = year - `r(min)' + 1
 
-            * create numeric variable for year
-            gen agno = year
-            sum year
-            replace year = year - `r(min)' + 1 //why +1? Ask Cristine
+      * county - 5 year FEs
+      gen year_bin5 = floor(year/5)*5
+      egen county5year = group(fips year_bin5)
 
-            * county - 5 year FEs
-            gen year_bin5 = floor(year/5)*5
-            egen county5year = group(fips year_bin5)
+      drop _merge year_bin5 avg_yearly_temp
 
-            ********************************* Simulations
-            * Loop over naive and comparisons
-            foreach ver in cftemp { // cftemp none trends lag1 lag3 lag5 fe
+      /*********************************
+      All bins
+      *********************************/
+      if "`binform'" == "allbins" {
 
-                  * Linear trends
-                  foreach slope in 1 { //forval slope = -1(1)1
-                        local slope_str = cond(`slope' == -1, "neg1", "`slope'")
-
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) outcome(linear, `slope') $bins `compare_`ver'' cluster(fips)
-                        cap mkdir "${output}sim2/`source'_`method'/"
-                        cap mkdir "${output}sim2/`source'_`method'/`ver'/"
-                        graph export "${output}sim2/`source'_`method'/`ver'/sim2_`ver'_lin`slope_str'_`source'_`method'.pdf", replace
-
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) outcome(linear, `slope') $bins `compare_`ver'' cluster(fips) effect(5)
-                        graph export "${output}sim2/`source'_`method'/`ver'/sim2_`ver'_lin`slope_str'_effect5_`source'_`method'.pdf", replace
-
+            ********************************* Simulations with simulated temperature data (sim1)
+            * Linear trends
+            if "`method'" == "naive" {
+                  forval slope = -1(1)1 {
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') $bins compare(`compare1') fe(fips year) cluster(fips) `graph_`slope''
                   }
-
-                  * Quadratic trends
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) outcome(quad, 1) $bins `compare_`ver'' cluster(fips)
-                  /* cap mkdir "${output}sim2/`source'_`method'/`ver'/" */
-                  graph export "${output}sim2/`source'_`method'/`ver'/sim2_`ver'_quad_`source'_`method'.pdf", replace
-
+            }
+            
+            ********************************* Simulations with real temperature data (sim2)
+            * Linear trends
+            if "`method'" == "naive" { // this is not necessarily, just restricting to what we use in the paper
+                  forval slope = -1(1)1 {
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, `slope') $bins compare(`compare2') fe(fips year) cluster(fips) `graph_`slope''
+                  }
+            }
+            else {
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) `graph_1'
             }
 
-            log close
+            * Quadratic trends
+            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) $bins compare(`compare2') fe(fips year) cluster(fips)
 
+            * Linear trend, real effect of 5 on both extreme bins
+            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) effect(5)
       }
-}
 
-********************************************************************************
-** SIMULATION 1 (does not work right now -- the code in bias_table.do works)
-********************************************************************************
-use "${path}DTA_US/countyLevel_USPanel_1970_2019_v2.dta", clear
+      /*********************************
+      Just the extreme bins
+      *********************************/
+      if "`binform'" == "extreme" {
 
-xtset fips year
-drop if year > 2019 | year < 1970
+            ********************************* Simulations with real temperature data (sim2)
+            * Linear trends + bias table
+            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme bias
 
-* Merge average temps
-merge m:1 year fips using `era5_F_avgtemp'
-keep if _merge == 3
-drop _merge
+            foreach bin in under_`lb_str' over_`ub_str' {
+                  local sim2_coef_`bin' = "${coef_p500_1_`bin'}"
+                  local sim2_ci_`bin' = "[${coef_p25_1_`bin'}, ${coef_p975_1_`bin'}]"
+                  local sim2_tstat_`bin' = "${tstat_p500_1_`bin'}"
+                  local sim2_tstat_ci_`bin' = "[${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
 
-* add state information
-merge m:1 fips using `fipsToState'
-/* drop if _merge != 3 */
-drop _merge
-egen stateCode = group(state)
-drop if state == "AK" | state == "PR" | state == "HI"
+                  local bias_`bin' = "" //initialize
+                  local slope_`bin' = ${slope_`bin'}
+                  local resid_`bin' = ${resid_`bin'}
+            }
+            local sigma_T0 = ${sigma_T0}
 
-* create pre period temperature
-gen baselinePeriodTemp = avg_yearly_temp if year <= 1980
-bysort fips: ereplace baselinePeriodTemp = mean(baselinePeriodTemp)
-replace baselinePeriodTemp = (baselinePeriodTemp * 9/5) + 32
+            * Finite T case
+            foreach bin in under_`lb_str' over_`ub_str' {
+                  
+                  * Initialize
+                  local `source'_row_`bin' = "``source'_row_`bin'' & \multirow{2}{*}{`title_`method''}"
+                  local second_row = " &"
 
-* create numeric variable for year
-gen agno = year
-sum year
-replace year = year - `r(min)' + 1
+                  * Fill in
+                  local `source'_row_`bin' = "``source'_row_`bin'' & `sim2_coef_`bin'' & `sim2_tstat_`bin'' & ${slope_`bin'_str} & ${resid_`bin'_str} & ${coef_1_Y_str} & ${bias2_`bin'}"
+                  local second_row = "`second_row' & `sim2_ci_`bin'' & `sim2_tstat_ci_`bin'' & ${trend_ci_`bin'} & ${coef_1_Y_ci} &"
+                  
+                  * Conjoin first and second rows
+                  local `source'_row_`bin' = "``source'_row_`bin'' \\ `second_row' \\"
+            }
 
-cftemp_sim baselinePeriodTemp fips year, simulate(10) option(1) outcome(linear, 1) binsize(10) lb(10) ub(90) omit(6) compare(naive cftemp) fe(fips year) cluster(fips) //extreme
-cap mkdir "${output}sim1/`source'_`method'/"
-cap mkdir "${output}sim1/`source'_`method'/cftemp/"
-graph export "${output}sim1/`source'_`method'/cftemp/sim1_`ver'_lin1_`source'_`method'.pdf", replace
+            local `source'_row_under_`lb_str' = "\midrule \multirow{50}{*}{\shortstack{`title_`source'' \\ \(\sigma^2_{T_0} = ${sigma2_T0_str}\)}} & \textit{Under 10 Bin} \\ ``source'_row_under_`lb_str''"
+
+            * Export as Latex File
+            dis "``source'_row_under_`lb_str''"
+            dis "``source'_row_over_`ub_str''"
+
+            file open cftemp_`task'_`lb_str' using "${output_temp}cftemp_comp_`source'_`task'_under_`lb_str'.tex", write replace
+            file write cftemp_`task'_`lb_str' ///
+                  "``source'_row_under_`lb_str''" _n
+            file close cftemp_`task'_`lb_str'
+
+            file open cftemp_`task'_`ub_str' using "${output_temp}cftemp_comp_`source'_`task'_over_`ub_str'.tex", write replace
+            file write cftemp_`task'_`ub_str' ///
+                  "``source'_row_over_`ub_str''" _n
+            file close cftemp_`task'_`ub_str'
+
+
+            * Quadratic trends
+            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme
+
+            * Cubic trends
+            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme
+      }
+
+log close
+exit
 
 ********************************************************************************
 ** SIMULATION 2 ADAPTATION
 ********************************************************************************
 
-foreach source in era5_F_bayes era5_F_avgtrend era5_F_avgtrend_bayes era5_F_chebyshev { //schlenker_F ghcn_ext era5_F era5_F_bayes era5_F_avgtrend era5_F_avgtrend_bayes era5_F_chebyshev 
+foreach source in era5_bayes era5_avgtrend era5_avgtrend_bayes era5_chebyshev { //prism_1950 ghcn era5 era5_bayes era5_avgtrend era5_avgtrend_bayes era5_chebyshev 
       
       * Prepare dataset
       use "`data_`source''", clear
@@ -343,7 +458,7 @@ foreach source in era5_F_bayes era5_F_avgtrend era5_F_avgtrend_bayes era5_F_cheb
             replace variable1 = variable1 - 0.1
             
             graph tw (scatter coefficient0 variable0, color("31 88 137")) (rcap p250 p9750 variable0, color("31 88 137")) (scatter coefficient1 variable1, color("155 52 58")) (rcap p251 p9751 variable1, color("155 52 58")), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(, angle(h)) legend(order(1 "Below median baseline temperature" 3 "Above median baseline temperature") position(6) rows(1))
-            graph export "${output}sim2/`source'/sim2_adaptation_`source'.pdf", replace
+            graph export "${output}sim2/`binform'/`source'/sim2_adaptation_`source'.pdf", replace
 
             log close
 }
@@ -351,7 +466,7 @@ foreach source in era5_F_bayes era5_F_avgtrend era5_F_avgtrend_bayes era5_F_cheb
 ********************************************************************************
 ** SIMULATION 3
 ********************************************************************************
-foreach source in era5_F { //schlenker_F ghcn_ext era5_F
+foreach source in era5 { //prism_1950 ghcn era5
 
       * Prepare dataset
       use "`data_`source''", clear

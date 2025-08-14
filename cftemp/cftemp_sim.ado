@@ -42,6 +42,7 @@ program define cftemp_sim
       if "`outcome'" != "" & strpos("`outcome'", ",") > 0 {    
             local outcome_method = substr("`outcome'", 1, strpos("`outcome'", ",") - 1)
             local outcome_param = substr("`outcome'", strpos("`outcome'", ",") + 1, .)
+            local slope_str = cond(`outcome_param' == -1, "neg1", "`outcome_param'")
       }
       dis "`outcome_method'"
       dis "`outcome_param'"
@@ -76,6 +77,9 @@ program define cftemp_sim
       if "`if'" != "" {
         local condition = "if `if'"
       }
+
+      * Extreme option
+      local binform = cond("`extreme'" == "", "allbins", "extreme")
 
       dis "`compare'"
 
@@ -639,7 +643,7 @@ program define cftemp_sim
             duplicates drop
             drop if varName == ""
             order source method varName varNum coef se tstat pValue trend_Y `include' loop
-            export delimited "${output}bindev/cftemp_${source}_`outcome_method'_${task}.csv", replace
+            export delimited "${temp}cftemp_${source}_`outcome_method'_`binform'_${task}.csv", replace
             restore
 
             * graph evolution of coefficients
@@ -671,17 +675,26 @@ program define cftemp_sim
       *************************** Plotting
       /* gen coef1_lab = string(round(coef_1, 0.01), "%06.2f") */
 
-      if `version_num' == 2 {
-            replace variable1 = variable1 - 0.1
-            replace variable2 = variable2 + 0.1
+      if "`extreme'" == "" {
+            if `version_num' == 2 {
+                  replace variable1 = variable1 - 0.1
+                  replace variable2 = variable2 + 0.1
 
-            /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
+                  /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
 
-            graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap p25_2 p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
-      }
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap p25_2 p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) grid(none)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) grid(none)) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
+            }
 
-      if `version_num' == 1 {
-            graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
+            if `version_num' == 1 {
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) grid(none)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) grid(none)) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
+            }
+
+            if `effect' == 0 {
+                  graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_`source'_`method'.pdf", replace
+            }
+            else {
+                  graph export "${simulations}sim`option'/sim`option'_`ver'_`outcome_method'`slope_str'_effect`effect'_`source'_`method'.pdf", replace
+            }
       }
 
       use `tempfile', clear

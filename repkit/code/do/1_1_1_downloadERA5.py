@@ -48,14 +48,13 @@ repkit = args.repkit
 # Setup
 ##################################
 # Input and output directories 
-input_path = f'{data}raw/ERA5_Land/'
+raw = f'{data}raw/ERA5_Land/'
 temp = f'{data}temp/'
-intermediate_path = f'{data}intermediate/'
 outputFileName = f'2m_hourlyTemperature_US_{startYear}_{endYear}.dta'
 
 log = f'{repkit}log/1_1_processERA5/'
 
-os.makedirs(input_path, exist_ok=True)
+os.makedirs(raw, exist_ok=True)
 os.makedirs(temp, exist_ok=True)
 os.makedirs(intermediate_path, exist_ok=True)
 
@@ -77,67 +76,67 @@ for i in monthYearList:
 ##################################
 # API function
 ##################################
-def cdsApiCall(monthYearList, variable = '2m_temperature'):
+# def cdsApiCall(monthYearList, variable = '2m_temperature'):
 
-    c = cdsapi.Client()
+#     c = cdsapi.Client()
 
-    for i in monthYearList:
+#     for i in monthYearList:
 
-        startTime = pd.to_datetime("today").strftime('%Y-%m-%d %H:%M:%S')
+#         startTime = pd.to_datetime("today").strftime('%Y-%m-%d %H:%M:%S')
 
-        year = i[0:4]
-        month = i[-2:]
+#         year = i[0:4]
+#         month = i[-2:]
 
-        print(f"Starting process for {variable}_{year}_{month}.grib")
+#         print(f"Starting process for {variable}_{year}_{month}.grib")
 
-        c.retrieve(
-            'reanalysis-era5-land',
-            {
-                'variable': '2m_temperature',
-                'year': f'{year}',
-                'month': f'{month}',
-                'day': [
-                    '01', '02', '03',
-                    '04', '05', '06',
-                    '07', '08', '09',
-                    '10', '11', '12',
-                    '13', '14', '15',
-                    '16', '17', '18',
-                    '19', '20', '21',
-                    '22', '23', '24',
-                    '25', '26', '27',
-                    '28', '29', '30',
-                    '31',
-                ],
-                'time': [
-                    '00:00', '01:00', '02:00',
-                    '03:00', '04:00', '05:00',
-                    '06:00', '07:00', '08:00',
-                    '09:00', '10:00', '11:00',
-                    '12:00', '13:00', '14:00',
-                    '15:00', '16:00', '17:00',
-                    '18:00', '19:00', '20:00',
-                    '21:00', '22:00', '23:00',
-                ],
-                'area': [
-                    50, -130, 20, -55,
-                ],
-                'data_format': 'grib',
-                'download_format': 'unarchived',
-            },
-            f'{input_path}{variable}_{year}_{month}.grib')
+#         c.retrieve(
+#             'reanalysis-era5-land',
+#             {
+#                 'variable': '2m_temperature',
+#                 'year': f'{year}',
+#                 'month': f'{month}',
+#                 'day': [
+#                     '01', '02', '03',
+#                     '04', '05', '06',
+#                     '07', '08', '09',
+#                     '10', '11', '12',
+#                     '13', '14', '15',
+#                     '16', '17', '18',
+#                     '19', '20', '21',
+#                     '22', '23', '24',
+#                     '25', '26', '27',
+#                     '28', '29', '30',
+#                     '31',
+#                 ],
+#                 'time': [
+#                     '00:00', '01:00', '02:00',
+#                     '03:00', '04:00', '05:00',
+#                     '06:00', '07:00', '08:00',
+#                     '09:00', '10:00', '11:00',
+#                     '12:00', '13:00', '14:00',
+#                     '15:00', '16:00', '17:00',
+#                     '18:00', '19:00', '20:00',
+#                     '21:00', '22:00', '23:00',
+#                 ],
+#                 'area': [
+#                     50, -130, 20, -55,
+#                 ],
+#                 'data_format': 'grib',
+#                 'download_format': 'unarchived',
+#             },
+#             f'{raw}{variable}_{year}_{month}.grib')
 
-        endTime = pd.to_datetime("today").strftime('%Y-%m-%d %H:%M:%S')
+#         endTime = pd.to_datetime("today").strftime('%Y-%m-%d %H:%M:%S')
 
-        with open(f'{log}grib_log.txt','a+') as file:
-            file.write(f'\n{variable}_{year}_{month}.grib {startTime} {endTime}')
+#         with open(f'{log}grib_log.txt','a+') as file:
+#             file.write(f'\n{variable}_{year}_{month}.grib {startTime} {endTime}')
 
-        print(f"Finished process for {variable}_{year}_{month}.grib")
+#         print(f"Finished process for {variable}_{year}_{month}.grib")
 
-##################################
-# Make the API call
-##################################
-cdsApiCall(monthYearList)
+# ##################################
+# # Make the API call
+# ##################################
+# cdsApiCall(monthYearList)
 
 ##################################
 # Create csv for each grib file.
@@ -151,7 +150,7 @@ for file in files:
     tries = 0
 
     for i in range(15):
-        csvFiles = list(filter(lambda x: x.startswith('2m_temperature'), os.listdir(f'{temp}')))
+        csvFiles = list(filter(lambda x: x.startswith('2m_temperature'), os.listdir(f'{raw}')))
         countCsvFiles = len(csvFiles)
         
         if countCsvFiles < maxFiles:
@@ -174,7 +173,7 @@ for file in files:
     for hour in range(1,25):
         # Creates a unformatted csv (with spaces instead of commas to separate and some issues with titles)
         print(f'Writing unformatted csv files {hour}/24. This may take a few minutes...')
-        os.system(f'grib_get_data -F "%.2f" -p date,step -w step={hour} {input_path}{file} > {temp}{fileName}_unformatted.csv')
+        os.system(f'grib_get_data -F "%.2f" -p date,step -w step={hour} {raw}{file} > {temp}{fileName}_unformatted.csv')
  
         inputFile  = open(f'{temp}{fileName}_unformatted.csv', 'r')
         outputFile = open(f'{temp}{fileName}.csv', 'w')
@@ -279,7 +278,7 @@ for year in yearList:
 		
 		print(f'Starting year {year} and month {month}...')
 		
-		df_new = csv.read_csv(f'{input_path}{file_path}').to_pandas()
+		df_new = csv.read_csv(f'{raw}{file_path}').to_pandas()
 		df = pd.concat([df, df_new], ignore_index=True)
 
 # Drop unnecessary columns
@@ -289,5 +288,5 @@ df = df.drop(columns=['','date_adjusted','timezone_name','timezone_value','step'
 df = df.rename(columns={'Value':'temperature', 'year_adjusted': 'year', 'month_adjusted':'month', 'day_adjusted':'day', 'hour_adjusted':'hour','Latitude':'latitude','Longitude':'longitude'})
 
 # Save file
-df.to_stata(f'{intermediate_path}{outputFileName}', write_index = False)
+df.to_stata(f'{temp}{outputFileName}', write_index = False)
 print('Saved as .dta!')

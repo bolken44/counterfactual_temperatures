@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=4
 
 #SBATCH --mem=120GB
-#SBATCH --time=48:00:00
+#SBATCH --time=168:00:00
 
 #SBATCH --mail-type=all
 
@@ -28,5 +28,5 @@ export endyear=2019
 echo "Processing ERA5"
 mkdir -p ../../log/1_1_processERA5/
 
-# python 1_1_1_downloadERA5.py -s "1970-01-01" -e "2019-12-31" -m 100 -w 5 -sy 1970 -ey 2019 -data "${data}" -repkit "${repkit}" > ../../log/1_1_processERA5/${SLURM_JOB_ID}.txt 2>&1
+python 1_1_1_downloadERA5.py -s "${startyear}-01-01" -e "${endyear}-12-31" -m 100 -w 5 -sy "${startyear}" -ey "${endyear}" -data "${data}" -repkit "${repkit}" > ../../log/1_1_processERA5/${SLURM_JOB_ID}.txt 2>&1
 stata-mp -b do 1_1_2_processERA5.do ${data} ${repkit} ${startyear} ${endyear}
