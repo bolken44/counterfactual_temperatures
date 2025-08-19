@@ -2,10 +2,10 @@
 #SBATCH --job-name=3_1_simulations
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --array=1-2
+#SBATCH --array=1,6
 
 #SBATCH --mem=100GB
-#SBATCH --time=10:30:00
+#SBATCH --time=48:00:00
 
 #SBATCH --mail-type=all
 

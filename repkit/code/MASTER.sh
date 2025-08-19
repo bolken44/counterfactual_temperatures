@@ -61,8 +61,8 @@ export mailuser=${SLURM_MAIL_USER:-user@example.com}
 ##################################
 # 1. Data Retrieval and Cleaning
 echo "Process raw data"
-# process_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_1_processERA5.txt 1_1_processERA5.sbatch | awk '{print $4}')
-process_id2=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_2_processPRISM.txt 1_2_processPRISM.sbatch | awk '{print $4}')
+process_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_1_processERA5.txt 1_1_processERA5.sbatch | awk '{print $4}')
+# process_id2=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_2_processPRISM.txt 1_2_processPRISM.sbatch | awk '{print $4}')
 # process_id3=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_3_processGHCN.txt 1_3_processGHCN.sbatch | awk '{print $4}')
 
 ##################################
@@ -73,13 +73,13 @@ echo "Construct counterfactual temperature datasets"
 ##################################
 # 3. Simulations
 echo "Run simulations and make Tables A1, A2, Figures 4, 5, 6c, 7, 9"
-simulation_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') #--depend=afterok:$cftemp_id
+# simulation_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') #--depend=afterok:$cftemp_id
 
 echo "Append parallelized output"
-append_id=$(sbatch --depend=afterok:$simulation_id --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_2_append_files.txt 3_2_append_files.sbatch | awk '{print $4}')
+# append_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_2_append_files.txt 3_2_append_files.sbatch | awk '{print $4}') #--depend=afterok:$simulation_id 
 
 echo "Make Figures 8, 10, "
-plot_id=$(sbatch --depend=afterok:$append_id --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_3_density_plots.txt 3_3_density_plots.sbatch | awk '{print $4}')
+# plot_id=$(sbatch --depend=afterok:$append_id --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_3_density_plots.txt 3_3_density_plots.sbatch | awk '{print $4}')
 
 ##################################
 # 4. Real Outcome Applications (Figure 11, A11-A15)

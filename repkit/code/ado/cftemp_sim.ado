@@ -41,7 +41,8 @@ program define cftemp_sim
       * What is the trend in the outcome variable?
       if "`outcome'" != "" & strpos("`outcome'", ",") > 0 {    
             local outcome_method = substr("`outcome'", 1, strpos("`outcome'", ",") - 1)
-            local outcome_param = substr("`outcome'", strpos("`outcome'", ",") + 1, .)
+            local outcome_param = strtrim(substr("`outcome'", strpos("`outcome'", ",") + 1, .))
+            local slope_str = cond(`outcome_param' == -1, "neg1", "`outcome_param'")
       }
       dis "`outcome_method'"
       dis "`outcome_param'"
@@ -72,10 +73,13 @@ program define cftemp_sim
         local weight "[aw = `aweights']"
       }
 
-      * If option
+      /* * If option
       if "`if'" != "" {
         local condition = "if `if'"
-      }
+      } */
+
+      * Extreme option
+      local binform = cond("`extreme'" == "", "allbins", "extreme")
 
       dis "`compare'"
 
@@ -167,6 +171,19 @@ program define cftemp_sim
             local extreme_cftemp_fe = "`fe'"
       }
 
+      if "`compare_type'" == "naive stateyear" {
+            local version_list = cond("`extreme'" == "", "naive stateyear", "extreme_naive extreme_stateyear")
+
+            local naive_fe = "`fe'"
+            local extreme_naive_fe = "`fe'"
+            local stateyear_fe = "`compare_vars'"
+            local extreme_stateyear_fe = "`compare_vars'"
+
+            local title0 = "No correction"
+            local title1 = "With State-Year FEs"
+            local version_num = 2
+      }
+
       if "`compare_type'" == "naive trends" {
             local version_list = cond("`extreme'" == "", "naive trends", "extreme_naive extreme_trends")
 
@@ -231,6 +248,9 @@ program define cftemp_sim
             local cftemp_fe = "`fe'"
             local extreme_cftemp_fe = "`fe'"
       }
+
+      dis "`condition0'"
+      dis "`condition1'"
 
       ******************************* Binning
       * Bin for below lower bound
@@ -345,6 +365,25 @@ program define cftemp_sim
             local maxdays = `r(max)'
       }
 
+      * generate lags
+      if strpos("`compare'", "lags") > 0 {
+            local coef_bins = cond("`extreme'" == "", "`naive_bins'", "`extreme_naive_bins'")
+            foreach var in `coef_bins' {
+                  forval q = 1/`compare_vars' {
+                        gen lag`q'`var'  = l`q'.`var'
+                  }
+            }
+            local lags = ""
+            forval q = 1/`compare_vars' {
+                  local lags = "`lags' l`q'.random_Y lag`q'*"
+            }
+            dis "`lags'"
+
+            * Bins for lags
+            local lags_bins = "`naive_bins' `lags'"
+            local extreme_lags_bins = "`extreme_naive_bins' `lags'"
+      }
+
       * loop through versions and lists
       local i = 1 // i denotes version
       foreach version in `version_list' {
@@ -352,23 +391,8 @@ program define cftemp_sim
             * set iteration variable
             local x = 1 // x denotes bin (gets reset for each version)
 
-            * generate lags
-            if strpos("`compare'", "lags") > 0 {
-                  local coef_bins = cond("`extreme'" == "", "`naive_bins'", "`extreme_naive_bins'")
-                  foreach var in `coef_bins' {
-                        forval q = 1/`compare_vars' {
-                              gen lag`q'`var'  = l`q'.`var'
-                        }
-                  }
-                  local lags = ""
-                  forval q = 1/`compare_vars' {
-                        local lags = "`lags' l`q'.random_Y lag`q'*"
-                  }
-                  dis "`lags'"
-
-                  * Bins for lags
-                  local lags_bins = "`naive_bins' `lags'"
-                  local extreme_lags_bins = "`extreme_naive_bins' `lags'"
+            if strpos("`compare_type'", "het") > 0 { // for adaptation loop
+                  local restrict = `i' - 1 // restrict is 0 or 1
             }
 
             * run regression many times 
@@ -432,7 +456,7 @@ program define cftemp_sim
                         }
                   }
 
-                  * random variable with mean 0 and variance v^2
+                  * random variable with mean 0 and std dev v^2
                   dis "`outcome_ff'"
                   dis "`realeffect'"
                   gen random_Y = `outcome_ff' + rnormal(0,`twoStdDevValue') `realeffect'
@@ -555,7 +579,7 @@ program define cftemp_sim
                         statsby _b, by(`geo') clear: regress resid `time'
                         rename _b_`time' coefs
                         tempfile coef
-                        save `coef'
+                        save `coef', replace
                         
                         // merge trends with baseline temperature 
                         use `save', clear
@@ -639,7 +663,13 @@ program define cftemp_sim
             duplicates drop
             drop if varName == ""
             order source method varName varNum coef se tstat pValue trend_Y `include' loop
-            export delimited "${output}bindev/cftemp_${source}_`outcome_method'_${task}.csv", replace
+
+            if `effect' == 0 {
+                  export delimited "${temp}cftemp_${source}_`outcome_method'_`binform'_${task}.csv", replace
+            }
+            else {
+                  export delimited "${temp}cftemp_${source}_`outcome_method'_effect`effect'_`binform'_${task}.csv", replace
+            }
             restore
 
             * graph evolution of coefficients
@@ -671,22 +701,34 @@ program define cftemp_sim
       *************************** Plotting
       /* gen coef1_lab = string(round(coef_1, 0.01), "%06.2f") */
 
-      if `version_num' == 2 {
-            replace variable1 = variable1 - 0.1
-            replace variable2 = variable2 + 0.1
+      if "`extreme'" == "" {
+            if `version_num' == 2 {
+                  replace variable1 = variable1 - 0.1
+                  replace variable2 = variable2 + 0.1
 
-            /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
+                  /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
 
-            graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap p25_2 p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
-      }
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white) lcolor(none))
+            }
 
-      if `version_num' == 1 {
-            graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h)) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
+            if `version_num' == 1 {
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white) lcolor(none))
+            }
+
+            if `effect' == 0 {
+                  graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_${method}.pdf", replace
+            }
+            else {
+                  graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_effect`effect'_${source}_${method}.pdf", replace
+            }
+
+            * Display notification for completion
+            di as txt "Simulation plot ready to be created."
       }
 
       use `tempfile', clear
 
-	* Display notification for completion
-      di as txt "Simulation plot ready to be created."
+      * Display notification for completion
+      di as txt "Simulation results exported as csv."
 
 end

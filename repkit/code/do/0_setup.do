@@ -68,9 +68,9 @@ global ado "${code}ado/"
 global do "${code}do/"
 
 * Output folders
-global simulations "$output/figures/simulations/"
-global density "$output/figures/density/"
-global real_outcomes "$output/figures/real_outcomes/"
+global simulations "${output}figures/simulations/"
+global density "${output}figures/density/"
+global real_outcomes "${output}/figures/real_outcomes/"
 
 /*********************************
 Install Required Packages

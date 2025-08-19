@@ -682,11 +682,11 @@ program define cftemp_sim
 
                   /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
 
-                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap p25_2 p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) grid(none)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) grid(none)) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap p25_2 p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
             }
 
             if `version_num' == 1 {
-                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) grid(none)) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) grid(none)) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
             }
 
             if `effect' == 0 {

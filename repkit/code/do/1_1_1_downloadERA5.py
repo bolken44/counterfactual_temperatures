@@ -20,6 +20,8 @@ import time
 import pyarrow as pa
 import pyarrow.csv as csv
 import pyarrow.compute as pc
+from tqdm import tqdm
+import itertools
 
 ##################################
 # Parse script arguments and create year/month list
@@ -56,7 +58,6 @@ log = f'{repkit}log/1_1_processERA5/'
 
 os.makedirs(raw, exist_ok=True)
 os.makedirs(temp, exist_ok=True)
-os.makedirs(intermediate_path, exist_ok=True)
 
 # Deactivate warnings.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -141,128 +142,128 @@ for i in monthYearList:
 ##################################
 # Create csv for each grib file.
 ##################################
-for file in files:
+# for file in files:
 
-    # Check how many csv files are in CSV folder.
-    # If there are more than maxFiles parameters, the program go to sleep and tries again.
-    # After 15 tries, if there's no success, the program is exited.
+#     # Check how many csv files are in CSV folder.
+#     # If there are more than maxFiles parameters, the program go to sleep and tries again.
+#     # After 15 tries, if there's no success, the program is exited.
 
-    tries = 0
+#     # tries = 0
 
-    for i in range(15):
-        csvFiles = list(filter(lambda x: x.startswith('2m_temperature'), os.listdir(f'{raw}')))
-        countCsvFiles = len(csvFiles)
+#     # for i in range(15):
+#     #     csvFiles = list(filter(lambda x: x.startswith('2m_temperature'), os.listdir(f'{raw}')))
+#     #     countCsvFiles = len(csvFiles)
         
-        if countCsvFiles < maxFiles:
-            tries = 0
-            print(f"Current csvFiles in CSV folder: {countCsvFiles}. We are good to go! \n")
-            break
-        tries += 1
-        print(f"Try number {tries}. There are {maxFiles} or more files in CSV folder. Going to sleep for {waitTime} seconds.")
-        time.sleep(waitTime)
+#     #     if countCsvFiles < maxFiles:
+#     #         tries = 0
+#     #         print(f"Current csvFiles in CSV folder: {countCsvFiles}. We are good to go! \n")
+#     #         break
+#     #     tries += 1
+#     #     print(f"Try number {tries}. There are {maxFiles} or more files in CSV folder. Going to sleep for {waitTime} seconds.")
+#     #     time.sleep(waitTime)
 
-    if tries == 15:
-        print("Already tried 15 times without success. Exiting program.")
-        break
+#     # if tries == 15:
+#     #     print("Already tried 15 times without success. Exiting program.")
+#     #     break
 
-    # Starts working in file.
-    print(f'Working on {file}... \n')
+#     # Starts working in file.
+#     print(f'Working on {file}... \n')
 
-    fileName = file[:-5]
+#     fileName = file[:-5]
 
-    for hour in range(1,25):
-        # Creates a unformatted csv (with spaces instead of commas to separate and some issues with titles)
-        print(f'Writing unformatted csv files {hour}/24. This may take a few minutes...')
-        os.system(f'grib_get_data -F "%.2f" -p date,step -w step={hour} {raw}{file} > {temp}{fileName}_unformatted.csv')
+#     for hour in range(1,25):
+#         # Creates a unformatted csv (with spaces instead of commas to separate and some issues with titles)
+#         print(f'Writing unformatted csv files {hour}/24. This may take a few minutes...')
+#         os.system(f'grib_get_data -F "%.2f" -p date,step -w step={hour} {raw}{file} > {temp}{fileName}_unformatted.csv')
  
-        inputFile  = open(f'{temp}{fileName}_unformatted.csv', 'r')
-        outputFile = open(f'{temp}{fileName}.csv', 'w')
+#         inputFile  = open(f'{temp}{fileName}_unformatted.csv', 'r')
+#         outputFile = open(f'{temp}{fileName}.csv', 'w')
 
-        # Titles repeat for each date in the file so this checks is used to avoid repeated title rows.
-        firstLine = True
+#         # Titles repeat for each date in the file so this checks is used to avoid repeated title rows.
+#         firstLine = True
 
-        print("Writing cleaned csv file. (This may also take a few minutes...)")
+#         print("Writing cleaned csv file. (This may also take a few minutes...)")
 
-        for line in inputFile:
-            if line.find('Latitude') == -1 or firstLine:
-                line_elements = line.strip().split() # remove leading and trailing blanks, separate variables based on space
+#         for line in inputFile:
+#             if line.find('Latitude') == -1 or firstLine:
+#                 line_elements = line.strip().split() # remove leading and trailing blanks, separate variables based on space
 
-                # Sometimes the GRIB file already has commas separating the fields, so we eliminate them
-                line_elements = [element.replace(',', '') for element in line_elements]
+#                 # Sometimes the GRIB file already has commas separating the fields, so we eliminate them
+#                 line_elements = [element.replace(',', '') for element in line_elements]
 
-                # Obtain new line from elements of the line of the unformatted file
-                newLine = ','.join(line_elements) + '\n'
+#                 # Obtain new line from elements of the line of the unformatted file
+#                 newLine = ','.join(line_elements) + '\n'
 
-                # Write line
-                outputFile.write(newLine)
+#                 # Write line
+#                 outputFile.write(newLine)
 
-                # Switch firstLine to false to prevent rewriting the column names
-                firstLine = False
+#                 # Switch firstLine to false to prevent rewriting the column names
+#                 firstLine = False
 
-        inputFile.close()
-        outputFile.close()
+#         inputFile.close()
+#         outputFile.close()
 
-        # Removes intermediate csv file.
-        print('Done! Removing unformatted csv...')
-        os.system(f'rm {temp}{fileName}_unformatted.csv')
+#         # Removes intermediate csv file.
+#         print('Done! Removing unformatted csv...')
+#         os.system(f'rm {temp}{fileName}_unformatted.csv')
 
-        # Collapsing the grid at a coarser level
-        granularity = 0.5
+#         # Collapsing the grid at a coarser level
+#         granularity = 0.5
 
-        print(f'Collapsing to a {granularity}x{granularity} grid ...')
-        table = csv.read_csv(f'{temp}{fileName}.csv')
+#         print(f'Collapsing to a {granularity}x{granularity} grid ...')
+#         table = csv.read_csv(f'{temp}{fileName}.csv')
 
-        # Change schema of table to improve efficiency
-        new_schema = pa.schema([('Latitude', pa.float32()), ('Longitude', pa.float32()), ('Value', pa.float32()), ('date', pa.int32()), ('step', pa.int8())])
-        table = table.cast(new_schema)
+#         # Change schema of table to improve efficiency
+#         new_schema = pa.schema([('Latitude', pa.float32()), ('Longitude', pa.float32()), ('Value', pa.float32()), ('date', pa.int32()), ('step', pa.int8())])
+#         table = table.cast(new_schema)
 
-        # generate group latitude and longitude
-        group_latitude = pc.subtract(table['Latitude'],0.001)
-        group_latitude = pc.divide(group_latitude,granularity)
-        group_latitude = pc.floor(group_latitude)
-        group_latitude = pc.add(group_latitude,1)
-        group_latitude = pc.multiply(group_latitude,granularity)
-        group_latitude = group_latitude.cast(pa.float32())
+#         # generate group latitude and longitude
+#         group_latitude = pc.subtract(table['Latitude'],0.001)
+#         group_latitude = pc.divide(group_latitude,granularity)
+#         group_latitude = pc.floor(group_latitude)
+#         group_latitude = pc.add(group_latitude,1)
+#         group_latitude = pc.multiply(group_latitude,granularity)
+#         group_latitude = group_latitude.cast(pa.float32())
 
-        group_longitude = pc.add(table['Longitude'],0.001)
-        group_longitude = pc.divide(group_longitude,granularity)
-        group_longitude = pc.floor(group_longitude)
-        group_longitude = pc.multiply(group_longitude,granularity)
-        group_longitude = group_longitude.cast(pa.float32())
+#         group_longitude = pc.add(table['Longitude'],0.001)
+#         group_longitude = pc.divide(group_longitude,granularity)
+#         group_longitude = pc.floor(group_longitude)
+#         group_longitude = pc.multiply(group_longitude,granularity)
+#         group_longitude = group_longitude.cast(pa.float32())
 
-        table = table.append_column(pa.field('group_latitude', pa.float32()),group_latitude)
-        table = table.append_column(pa.field('group_longitude', pa.float32()),group_longitude)
+#         table = table.append_column(pa.field('group_latitude', pa.float32()),group_latitude)
+#         table = table.append_column(pa.field('group_longitude', pa.float32()),group_longitude)
 
-        group_value = pa.TableGroupBy(table,['step','date','group_latitude','group_longitude']).aggregate([('Value','mean')])
-        group_value = group_value.rename_columns(['step', 'date', 'Latitude', 'Longitude', 'Value'])
+#         group_value = pa.TableGroupBy(table,['step','date','group_latitude','group_longitude']).aggregate([('Value','mean')])
+#         group_value = group_value.rename_columns(['step', 'date', 'Latitude', 'Longitude', 'Value'])
 
-        # Compressing formatted csv 
-        print('Compressing CSV...')
-        with pa.CompressedOutputStream(f'{temp}{fileName}_hr{hour}.csv.bz2', "bz2") as out:
-            csv.write_csv(group_value, out)
+#         # Compressing formatted csv 
+#         print('Compressing CSV...')
+#         with pa.CompressedOutputStream(f'{temp}{fileName}_hr{hour}.csv.bz2', "bz2") as out:
+#             csv.write_csv(group_value, out)
 
-        # Removes uncompressed csv file.
-        print(f'Done with file {hour}/24! Removing uncompressed csv... \n')
-        os.system(f'rm {temp}{fileName}.csv')
+#         # Removes uncompressed csv file.
+#         print(f'Done with file {hour}/24! Removing uncompressed csv... \n')
+#         os.system(f'rm {temp}{fileName}.csv')
 
-    # Append all 24 datasets into one
-    print('Starting to append all files ...')
-    for hour in range(1,25):
-        if hour == 1:
-            table = csv.read_csv(f'{temp}{fileName}_hr{hour}.csv.bz2')
-        else:
-            new_table = csv.read_csv(f'{temp}{fileName}_hr{hour}.csv.bz2')
-            table = pa.concat_tables([table, new_table])
+#     # Append all 24 datasets into one
+#     print('Starting to append all files ...')
+#     for hour in range(1,25):
+#         if hour == 1:
+#             table = csv.read_csv(f'{temp}{fileName}_hr{hour}.csv.bz2')
+#         else:
+#             new_table = csv.read_csv(f'{temp}{fileName}_hr{hour}.csv.bz2')
+#             table = pa.concat_tables([table, new_table])
         
-        # Remove hourly csv
-        os.system(f'rm {temp}{fileName}_hr{hour}.csv.bz2')
+#         # Remove hourly csv
+#         os.system(f'rm {temp}{fileName}_hr{hour}.csv.bz2')
 
-    # Compressing final csv 
-    print('Compressing final CSV... \n')
-    with pa.CompressedOutputStream(f'{temp}{fileName}.csv.bz2', "bz2") as out:
-        csv.write_csv(table, out)
+#     # Compressing final csv 
+#     print('Compressing final CSV... \n')
+#     with pa.CompressedOutputStream(f'{temp}{fileName}.csv.bz2', "bz2") as out:
+#         csv.write_csv(table, out)
 
-print('All files have been processed! \n')
+# print('All files have been processed! \n')
 
 ##################################
 # Append all csvs and save as dta
@@ -271,18 +272,19 @@ print('All files have been processed! \n')
 df = pd.DataFrame()
 
 # Work with each file on the list
-for year in yearList:
-	for month in monthList:
-		# Define the file path for the CSV file
-		file_path = f'2m_temperature_{year}_{month:0>2}US.csv.bz2'
-		
-		print(f'Starting year {year} and month {month}...')
-		
-		df_new = csv.read_csv(f'{raw}{file_path}').to_pandas()
-		df = pd.concat([df, df_new], ignore_index=True)
+for year, month in tqdm(itertools.product(yearList, monthList), 
+                        total=len(yearList)*len(monthList), 
+                        desc="Processing"):
+    # Define the file path for the CSV file
+    file_path = f'2m_temperature_{year}_{month:0>2}.csv.bz2'
+    
+    print(f'Starting year {year} and month {month}...')
+    
+    df_new = csv.read_csv(f'{temp}{file_path}').to_pandas()
+    df = pd.concat([df, df_new], ignore_index=True)
 
 # Drop unnecessary columns
-df = df.drop(columns=['','date_adjusted','timezone_name','timezone_value','step','date'])
+df = df.drop(columns=['step','date'])
 
 # Rename other columns
 df = df.rename(columns={'Value':'temperature', 'year_adjusted': 'year', 'month_adjusted':'month', 'day_adjusted':'day', 'hour_adjusted':'hour','Latitude':'latitude','Longitude':'longitude'})

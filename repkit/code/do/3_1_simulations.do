@@ -5,9 +5,12 @@ ACTION: Runs all simulations.
 *******************************************************************************
 Set Up
 *********************************/
+log close _all
+
 args data repkit task
 global data "`data'"
 global repkit "`repkit'"
+global task `task'
 
 do "${repkit}code/do/0_setup.do"
 global pool "/orcd/pool/003/hnaka24/climate/"
@@ -16,12 +19,13 @@ global weather "${pool}processed/"
 log using "${log}3_1_simulations/3_1_simulations_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
+display "`c(tmpdir)'"
 /*********************************
 Parallelize temperature data source and control methods
 *********************************/
 * Declare which ones
 local sources  "era5" // prism_1950 prism_1970 ghcn
-local methods  "naive" //stateyearFE lag3 trends 5year year year_bayes chebyshev
+local methods  "naive stateyearFE lag3 trends 5year year bayes chebyshev adapt"
 local binforms "allbins extreme"
 
 * Count items in each dimension
@@ -29,11 +33,11 @@ local n_sources  : word count `sources'
 local n_methods  : word count `methods'
 local n_binforms : word count `binforms'
 
-* Figure out indices based on task ID (corrected)
-local s_index  = ceil(`task' / (`n_methods' * `n_binforms'))
-local temp     = mod(`task'-1, (`n_methods' * `n_binforms'))
-local m_index  = ceil((`temp' + 1) / `n_binforms')
-local b_index  = mod(`task'-1, `n_binforms') + 1
+* Figure out indices based on task ID (swapped order)
+local s_index  = ceil(`task' / (`n_binforms' * `n_methods'))
+local temp     = mod(`task'-1, (`n_binforms' * `n_methods'))
+local b_index  = ceil((`temp' + 1) / `n_methods')
+local m_index  = mod(`task'-1, `n_methods') + 1
 
 * Get the actual values
 local source  : word `s_index'  of `sources'
@@ -112,12 +116,8 @@ local title_lag3 = "With 3 Lags"
 local title_trends = "County-Specific Linear Trends"
 local title_5year = "County-5 Year Fixed Effects"
 local title_year = "Lin. in Year"
-local title_year_bayes = "Lin. in Year + Bayes"
-local title_avgtrend = "Lin. in Natl Avg"
-local title_avgtrend_bayes = "Lin. in Natl Avg + Bayes"
-local title_splines = "Splines in Year"
+local title_bayes = "Lin. in Year + Bayes"
 local title_chebyshev = "Chebyshev"
-local title_aggregate = "Aggregate \(\pm\)5 Years"
 
 // start of loop
 global source = "`source'"
@@ -141,20 +141,21 @@ local base_prism_1950 = 1960
 local base_prism_1970 = 1980
 local base_ghcn = 1980
 
-local graph_neg1 "yscale(range(-3 1)) ylabel(-3(.5)1)"
-local graph_0 "yscale(range(-.1 .1)) ylabel(-.1(.05).1)"
-local graph_1 "yscale(range(-1.5 3.5)) ylabel(-1.5(.5)3.5)"
+/* local graph_neg1 "yscale(range(-3 1)) ylabel(-3(.5)1)"
+local graph_0 "yscale(range(-1 1)) ylabel(-.1(.05).1)"
+local graph_1 "yscale(range(-3 5)) ylabel(-3(.5)5)" */
 
-local compare1 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "sim")))))
+local compare1 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "naive trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "naive stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "naive lags, 3", cond(strpos("`method'", "5year") > 0, "naive 5year, county5year year", "naive sim")))))
 
-local compare2 = cond(strpos("`method'", "naive") > 0 | strpos("`method'", "adapt") > 0, "none", cond(strpos("`method'", "trends") > 0, "trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "lags, 3", cond(strpos("`method'", "5year") > 0, "5year, county5year year", "cftemp"))))) //different from sim 1 compare! cftemp instead of sim
+local compare2 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "naive trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "naive stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "naive lags, 3", cond(strpos("`method'", "5year") > 0, "naive 5year, county5year year", cond(strpos("`method'", "adapt") > 0, "naive het, aboveMedian", "naive cftemp")))))) //different from sim 1 compare! cftemp instead of sim
 
 /*********************************
 Main script
 *********************************/
       * Counterfactual temperature controls
-      if "`method'" == "year" | "`method'" == "year_bayes" | "`method'" == "chebyshev" {
-            use "${temperature}`source'_UScounty_cftemp_F_`method'.dta", clear
+      if "`method'" == "bayes" | "`method'" == "chebyshev" { // "`method'" == "year" |
+            /* use "${temperature}`source'_UScounty_cftemp_F_`method'.dta", clear */
+            use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear
       }
       * Reduced Form Methods
       else {
@@ -175,9 +176,22 @@ Main script
       egen stateCode = group(state)
       drop if state == "AK" | state == "PR" | state == "HI"
 
+      * state-year FE
+      egen stateyear = group(state year)
+
       * create pre period temperature
       gen baselinePeriodTemp = avg_yearly_temp if year <= `base_`source''
       bysort fips: ereplace baselinePeriodTemp = mean(baselinePeriodTemp)
+
+      * adaptation spec
+      if strpos("`method'", "adapt") > 0 {
+            
+            * divide sample into two: above and below pre-period median temperature
+            sum baselinePeriodTemp, detail
+            local medianPreTemp = `r(p50)'
+
+            gen aboveMedian = baselinePeriodTemp > `medianPreTemp'
+      }
 
       * create numeric variable for year
       gen agno = year
@@ -199,86 +213,56 @@ Main script
             * Linear trends
             if "`method'" == "naive" {
                   forval slope = -1(1)1 {
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') $bins compare(`compare1') fe(fips year) cluster(fips) `graph_`slope''
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') $bins compare(`compare1') fe(fips year) cluster(fips) graph(`graph_`slope'')
                   }
+            }
+            if  "`method'" == "year" {
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) $bins compare(`compare1') fe(fips year) cluster(fips) graph(`graph_`slope'')
+
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(quad, 1) $bins compare(`compare1') fe(fips year) cluster(fips) graph(`graph_`slope'')
+
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) $bins compare(`compare1') fe(fips year) cluster(fips) graph(`graph_`slope'') effect(5)
             }
             
             ********************************* Simulations with real temperature data (sim2)
             * Linear trends
             if "`method'" == "naive" { // this is not necessarily, just restricting to what we use in the paper
                   forval slope = -1(1)1 {
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, `slope') $bins compare(`compare2') fe(fips year) cluster(fips) `graph_`slope''
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, `slope') $bins compare(`compare2') fe(fips year) cluster(fips) graph(`graph_`slope'')
                   }
             }
             else {
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) `graph_1'
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) graph(`graph_1')
             }
 
-            * Quadratic trends
-            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) $bins compare(`compare2') fe(fips year) cluster(fips)
+            if strpos("`method'", "adapt") <= 0 {
+                  * Quadratic trends
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) $bins compare(`compare2') fe(fips year) cluster(fips)
 
-            * Linear trend, real effect of 5 on both extreme bins
-            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) effect(5)
+                  * Cubic trends
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) $bins compare(`compare2') fe(fips year) cluster(fips)
+
+                  * Linear trend, real effect of 5 on both extreme bins
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) effect(5)
+            }
       }
 
       /*********************************
       Just the extreme bins
       *********************************/
       if "`binform'" == "extreme" {
-
+            
             ********************************* Simulations with real temperature data (sim2)
             * Linear trends + bias table
             cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme bias
 
-            foreach bin in under_`lb_str' over_`ub_str' {
-                  local sim2_coef_`bin' = "${coef_p500_1_`bin'}"
-                  local sim2_ci_`bin' = "[${coef_p25_1_`bin'}, ${coef_p975_1_`bin'}]"
-                  local sim2_tstat_`bin' = "${tstat_p500_1_`bin'}"
-                  local sim2_tstat_ci_`bin' = "[${tstat_p25_1_`bin'}, ${tstat_p975_1_`bin'}]"
+            if strpos("`method'", "adapt") <= 0 {
+                  * Quadratic trends
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme
 
-                  local bias_`bin' = "" //initialize
-                  local slope_`bin' = ${slope_`bin'}
-                  local resid_`bin' = ${resid_`bin'}
+                  * Cubic trends
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme
             }
-            local sigma_T0 = ${sigma_T0}
-
-            * Finite T case
-            foreach bin in under_`lb_str' over_`ub_str' {
-                  
-                  * Initialize
-                  local `source'_row_`bin' = "``source'_row_`bin'' & \multirow{2}{*}{`title_`method''}"
-                  local second_row = " &"
-
-                  * Fill in
-                  local `source'_row_`bin' = "``source'_row_`bin'' & `sim2_coef_`bin'' & `sim2_tstat_`bin'' & ${slope_`bin'_str} & ${resid_`bin'_str} & ${coef_1_Y_str} & ${bias2_`bin'}"
-                  local second_row = "`second_row' & `sim2_ci_`bin'' & `sim2_tstat_ci_`bin'' & ${trend_ci_`bin'} & ${coef_1_Y_ci} &"
-                  
-                  * Conjoin first and second rows
-                  local `source'_row_`bin' = "``source'_row_`bin'' \\ `second_row' \\"
-            }
-
-            local `source'_row_under_`lb_str' = "\midrule \multirow{50}{*}{\shortstack{`title_`source'' \\ \(\sigma^2_{T_0} = ${sigma2_T0_str}\)}} & \textit{Under 10 Bin} \\ ``source'_row_under_`lb_str''"
-
-            * Export as Latex File
-            dis "``source'_row_under_`lb_str''"
-            dis "``source'_row_over_`ub_str''"
-
-            file open cftemp_`task'_`lb_str' using "${output_temp}cftemp_comp_`source'_`task'_under_`lb_str'.tex", write replace
-            file write cftemp_`task'_`lb_str' ///
-                  "``source'_row_under_`lb_str''" _n
-            file close cftemp_`task'_`lb_str'
-
-            file open cftemp_`task'_`ub_str' using "${output_temp}cftemp_comp_`source'_`task'_over_`ub_str'.tex", write replace
-            file write cftemp_`task'_`ub_str' ///
-                  "``source'_row_over_`ub_str''" _n
-            file close cftemp_`task'_`ub_str'
-
-
-            * Quadratic trends
-            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme
-
-            * Cubic trends
-            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) $bins compare(`compare2') fe(fips year) cluster(fips) extreme
       }
 
 log close

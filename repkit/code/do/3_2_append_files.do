@@ -34,7 +34,7 @@ Run
 *********************************/
 local k = 1
 foreach binform in allbins extreme {
-      foreach source in era5_F { // prism_1950 prism_1970 ghcn 
+      foreach source in era5 { // prism_1950 prism_1970 ghcn 
 
             *** Define output file name and delete it if it already exists to avoid appending multiple times
             * TEXs
@@ -44,7 +44,7 @@ foreach binform in allbins extreme {
             } */
             
             * CSVs
-            foreach power in linear quadratic cubic {
+            foreach power in lin quad cubic {
                   local output_csv_`power' "${intermediate}power_table_`power'_`binform'_`source'.csv"
                   shell rm -f `output_csv_`power''
             }
@@ -71,7 +71,7 @@ foreach binform in allbins extreme {
                   } */
                   
                   * CSVs
-                  foreach power in linear quadratic cubic {
+                  foreach power in lin quad cubic {
                         if `i' == 1 {
                               // Include header for the first file
                               shell cat "${temp}cftemp_`source'_`power'_`binform'_`j'.csv" >> `output_csv_`power''
@@ -153,3 +153,5 @@ foreach binform in allbins extreme {
             local k = `k' + 1
       }
 }
+
+log close

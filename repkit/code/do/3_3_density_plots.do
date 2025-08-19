@@ -25,31 +25,27 @@ local title_lag3 = "With 3 Lags"
 local title_trends = "County-Specific Linear Trends"
 local title_5year = "County-5 Year Fixed Effects"
 local title_year = "Lin. in Year"
-local title_year_bayes = "Lin. in Year + Bayes"
-local title_avgtrend = "Lin. in Natl Avg"
-local title_avgtrend_bayes = "Lin. in Natl Avg + Bayes"
-local title_splines = "Splines in Year"
+local title_bayes = "Lin. in Year + Bayes"
 local title_chebyshev = "Chebyshev"
-local title_aggregate = "Aggregate ±5 Years"
 
 /*********************************
 Run
 *********************************/
 foreach binform in allbins extreme {
-      foreach source in era5_F { // prism_1950 prism_1970 ghcn 
+      foreach source in era5 { // prism_1950 prism_1970 ghcn 
 
-            foreach power in linear quadratic cubic {
+            foreach power in lin quad cubic {
 
                   *** Import the appended csv
                   import delimited "${intermediate}power_table_`power'_`binform'_`source'.csv", clear
 
-                  foreach bin in under_10 over_90 {
+                  foreach bin in under_$lb_str over_$ub_str {
 
                         preserve
                         
                         keep if varname == "real_`bin'"
 
-                        foreach method in naive stateyearFE lag3 trends 5year year year_bayes chebyshev { //avgtrend avgtrend_bayes splines aggregate 
+                        foreach method in naive stateyearFE lag3 trends 5year year bayes chebyshev { //avgtrend avgtrend_bayes splines aggregate 
                               count if pvalue <= 0.05 & method == "`method'"
                               local sig_`method'_`bin' = string(round(r(N) /10, 0.1), "%4.1f")
                         }
@@ -73,7 +69,7 @@ foreach binform in allbins extreme {
                         twoway ///
                         (kdensity coef if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
                         (kdensity coef if method == "year", lpattern(dash) color("44 160 44") lwidth(thick)) ///
-                        (kdensity coef if method == "year_bayes", lpattern(dash) color("155 52 58") lwidth(thick)) ///
+                        (kdensity coef if method == "bayes", lpattern(dash) color("155 52 58") lwidth(thick)) ///
                         (kdensity coef if method == "chebyshev", lpattern(dash) color("255 127 14") lwidth(thick)) ///
                         , ///
                         graphregion(color(white)) ///
@@ -105,7 +101,7 @@ foreach binform in allbins extreme {
                         twoway ///
                         (kdensity tstat if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
                         (kdensity tstat if method == "year", lpattern(dash) color("44 160 44") lwidth(thick)) ///
-                        (kdensity tstat if method == "year_bayes", lpattern(dash) color("155 52 58") lwidth(thick)) ///
+                        (kdensity tstat if method == "bayes", lpattern(dash) color("155 52 58") lwidth(thick)) ///
                         (kdensity tstat if method == "chebyshev", lpattern(dash) color("255 127 14") lwidth(thick)) ///
                         , ///
                         graphregion(color(white)) ///
@@ -129,9 +125,11 @@ foreach binform in allbins extreme {
                   "\caption*{\color{p3line}{\textbf{- - -}} `title_lag3' (`sig_lag3_under_10'\%, `sig_lag3_over_90'\%) \hspace{1cm} \color{p4line}{\textbf{- - -}} `title_trends' (`sig_trends_under_10'\%, `sig_trends_over_90'\%)}" _n ///
                   "\caption*{\color{p5line}{\textbf{- - -}} `title_5year' (`sig_5year_under_10'\%, `sig_5year_over_90'\%)}" _n _n _n ///
                   "\caption*{\color{p1line}{\textbf{\textemdash\textemdash}} title_naive' (Under 10 Bin: `sig_naive_under_10'\%, Over 90 Bin: `sig_naive_over_90'\%)}" _n ///
-                  "\caption*{\color{p2line}{\textbf{- - -}} `title_year_bayes' (`sig_year_bayes_under_10'\%, `sig_year_bayes_over_90'\%)}" _n ///
+                  "\caption*{\color{p2line}{\textbf{- - -}} `title_bayes' (`sig_bayes_under_10'\%, `sig_bayes_over_90'\%)}" _n ///
                   "\caption*{\color{p3line}{\textbf{- - -}} `title_year' (`sig_year_under_10'\%, `sig_year_over_90'\%) \hspace{1cm} \color{p4line}{\textbf{- - -}} `title_chebyshev' (`sig_chebyshev_under_10'\%, `sig_chebyshev_over_90'\%)}"
                   file close legend
             }
       }
 }
+
+log close

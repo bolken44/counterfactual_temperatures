@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=4
 
 #SBATCH --mem=120GB
-#SBATCH --time=1:00:00
+#SBATCH --time=100:00:00
 
 #SBATCH --mail-type=all
 
