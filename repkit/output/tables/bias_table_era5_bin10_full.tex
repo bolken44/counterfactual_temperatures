@@ -1,0 +1,27 @@
+\clearpage
+\thispagestyle{empty}
+\newgeometry{top=1in, bottom=1in, left=0.3in, right=0.3in}
+\begin{landscape}
+\begin{table}[htb]
+\centering
+\caption{Comparison of Different \texttt{cftemp} Methods (ERA 5 (1970-2019))}
+\label{cftemp-comp}
+\scalebox{0.75}{
+\begin{threeparttable}
+\begin{tabular}{llcccccc}
+\toprule
+Dataset & \multicolumn{1}{c}{Method} & Coef & t-Stat & \(\omega_{C \text{ or } H}\) & \(\sigma^2_{e_{C \text{ or } H}}\) & \(\omega_Y\) & Bias \\
+\midrule
+\midrule \multirow{34}{*}{\shortstack{ERA 5 (1970-2019) \\ \(\sigma^2_{T_0} = 84.86\)}} & \textit{Under 10 Bin} \\  & \multirow{2}{*}{No correction} & 4.69935 & 9.19458 &  .0058857 & .0017149 & 1.0008 & 3.35236 \\  & & [3.80523, 5.6083] & [7.4216, 11.11126] & [.0056941, .0060774] & & [.96583, 1.03348] & [3.23523, 3.46182] \\  & \multirow{2}{*}{State-Year Fixed Effects} & 1.88201 & 1.75086 &  .0005417 & .0007959 & .12241 & .03996 \\  & & [-.4247, 4.07439] & [-.38996, 3.74433] & [.0004121, .0006713] & & [.11016, .1347] & [.03597, .04397] \\  & \multirow{2}{*}{With 3 Lags} & 3.36309 & 6.1794 &  .0041661 & .0018307 & .83614 & 2.0432 \\  & & [2.27861, 4.38841] & [4.19969, 8.08953] & [.0039682, .0043641] & & [.80168, .87139] & [1.95899, 2.12933] \\  & \multirow{2}{*}{County-Specific Linear Trends} & .01339 & .02541 &  1.52e-18 & 1.30e-32 & 0 & 0 \\  & & [-1.01502, 1.02644] & [-1.98966, 2.02286] & [9.91e-19, 2.05e-18] & & [0, 0] & [0, 0] \\  & \multirow{2}{*}{County-5 Year Fixed Effects} & .38822 & .69757 &  .0003486 & .0000155 & .00974 & .00211 \\  & & [-.71123, 1.42908] & [-1.29829, 2.58425] & [.0003304, .0003668] & & [.00624, .01324] & [.00135, .00287] \\  & \multirow{2}{*}{Counterfactual Temp. Control without Bayes } & .2641 & .52361 &  .0002517 & .0004394 & .31611 & .04929 \\  & & [-.75707, 1.30544] & [-1.48777, 2.5788] & [.0001547, .0003487] & & [.29577, .33555] & [.04612, .05232] \\  & \multirow{2}{*}{Counterfactual Temp. Control} & .06665 & .13149 & -6.60e-06 & .0005889 & .24296 & -.00097 \\  & & [-.95401, 1.1317] & [-1.89087, 2.19296] & [-.0001174, .0001042] & & [.22567, .26012] & [-.00104, -.0009] \\  & \multirow{2}{*}{Chebyshev} & .23994 & .46297 &  .0001891 & .0004579 & .29047 & .03403 \\  & & [-.77675, 1.27405] & [-1.5282, 2.54045] & [.0000901, .0002882] & & [.27004, .30838] & [.03164, .03613] \\
+\cmidrule(lr){2-8}  & \textit{Over 90 Bin} \\
+  & \multirow{2}{*}{No correction} & 4.26788 & 10.24993 &  .0091595 & .0123849 & 1.0008 & 5.81209 \\  & & [3.4888, 5.05203] & [8.31996, 12.30084] & [.0086446, .0096745] & & [.96583, 1.03348] & [5.60902, 6.00186] \\  & \multirow{2}{*}{State-Year Fixed Effects} & 1.70329 & 2.52727 &  .0013078 & .0061324 & .12241 & .11244 \\  & & [.34653, 3.00607] & [.53288, 4.49999] & [.0009482, .0016674] & & [.11016, .1347] & [.10119, .12373] \\  & \multirow{2}{*}{With 3 Lags} & 2.963 & 7.10831 &  .0070156 & .0073426 & .83614 & 3.99881 \\  & & [2.14093, 3.75624] & [5.10124, 9.06581] & [.0066191, .0074122] & & [.80168, .87139] & [3.834, 4.16739] \\  & \multirow{2}{*}{County-Specific Linear Trends} & -.02138 & -.04966 & -9.17e-18 & 2.61e-32 & 0 & 0 \\  & & [-.82123, .81351] & [-1.91309, 1.90497] & [-9.92e-18, -8.43e-18] & & [0, 0] & [0, 0] \\  & \multirow{2}{*}{County-5 Year Fixed Effects} & -.02427 & -.04951 &  3.67e-06 & .0000149 & .00974 & .00003 \\  & & [-1.01834, .89936] & [-2.09792, 1.88826] & [-.0000142, .0000215] & & [.00624, .01324] & [.00002, .00004] \\  & \multirow{2}{*}{Counterfactual Temp. Control without Bayes } & .1789 & .42668 &  .0003218 & .0009305 & .31611 & .07663 \\  & & [-.63344, 1.02585] & [-1.48377, 2.45267] & [.0001806, .0004629] & & [.29577, .33555] & [.0717, .08134] \\  & \multirow{2}{*}{Counterfactual Temp. Control} & .03298 & .07682 &  .0000737 & .0009549 & .24296 & .01314 \\  & & [-.78326, .86426] & [-1.86125, 2.05716] & [-.0000674, .0002147] & & [.22567, .26012] & [.0122, .01406] \\  & \multirow{2}{*}{Chebyshev} & -.00944 & -.02265 &  .0000547 & .000719 & .29047 & .012 \\  & & [-.82895, .83396] & [-1.92314, 1.99029] & [-.0000693, .0001788] & & [.27004, .30838] & [.01116, .01274] \\
+\hline \hline
+\end{tabular}
+\begin{tablenotes}
+\textit{Notes:} All temperatures are in \degree F. The sample period is 1970-2019 for ERA Land 5. All columns report statistics related to our main simulation exercise. Panel A reports statistic related to the under-10 degree bin and Panel B reports statistics related to the over-90 degree bin. All terms are as defined in Section \ref{sec:theory} and the bias formula is presented in equations \eqref{bias_C_ex} and \eqref{bias_H_ex}.
+\end{tablenotes}
+\end{threeparttable}
+}
+\end{table}
+\end{landscape}
+\restoregeometry
