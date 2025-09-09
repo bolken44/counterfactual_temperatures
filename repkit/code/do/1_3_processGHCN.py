@@ -399,4 +399,4 @@ final_df['day'] = final_df['date'].dt.day
 final_df = final_df[(final_df['year'] >= 1968) & (final_df['year'] <= 2016)]
 
 final_df.to_stata(f"{temp}ghcn_countylevel_1968_2016_{task_id}.dta", write_index=False)
-print(f"County-day level data saved to {temp}ghcn_countylevel_1968_2016.dta.")
+print(f"County-day level data saved to {temp}ghcn_countylevel_1968_2016_{task_id}.dta.")

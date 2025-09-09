@@ -19,20 +19,20 @@ set seed 1642
 /*********************************
 Declare bin structure
 *********************************/
-local binsize = 10
-local lb = 10
-local ub = 90
-local omit = 6
-global bins = "binsize(`binsize') lb(`lb') ub(`ub') omit(`omit')"
+global binsize = 10
+global lb = 10
+global ub = 90
+global omit = 6
+global bins = "binsize($binsize) lb($lb) ub($ub) omit($omit)"
 
 * Bin for below lower bound
-global lb_str = cond(`lb' < 0, "n`=abs(`lb')'", "`lb'") //to create the string "n#" for negative numbers
-local names_bins = "under_`lb_str'"
+global lb_str = cond($lb < 0, "n`=abs($lb)'", "$lb") //to create the string "n#" for negative numbers
+local names_bins = "under_${lb_str}"
 
 * Loop through the middle bins
-local ub_bin = `ub'-`binsize'
-forvalues start = `lb'(`binsize')`ub_bin' {
-      local end = `start' + `binsize'
+local ub_bin = $ub-$binsize
+forvalues start = $lb($binsize)`ub_bin' {
+      local end = `start' + $binsize
       local start_label = cond(`start' < 0, "n`=abs(`start')'", "`start'")
       local end_label = cond(`end' <= 0, "n`=abs(`end')'", "`end'")
 
@@ -40,8 +40,8 @@ forvalues start = `lb'(`binsize')`ub_bin' {
 }
 
 * Bin for above upper bound
-global ub_str = cond(`ub' < 0, "n`=abs(`ub')'", "`ub'") //to name the bin real_over_`ub'
-local names_bins = "`names_bins' over_`ub_str'"
+global ub_str = cond($ub < 0, "n`=abs($ub)'", "$ub") //to name the bin real_over_$ub
+local names_bins = "`names_bins' over_${ub_str}"
 
 /*********************************
 Set Switches
@@ -68,8 +68,20 @@ global ado "${code}ado/"
 global do "${code}do/"
 
 * Output folders
-global simulations "${output}figures/simulations/"
-global density "${output}figures/density/"
+global figures "${output}figures/"
+cap mkdir "${output}figures/"
+global tables "${output}tables/"
+cap mkdir "${output}tables/"
+
+global simulations "${output}figures/simulations_1SD/"
+cap mkdir "$simulations"
+cap mkdir "${simulations}sim1/"
+cap mkdir "${simulations}sim2/"
+cap mkdir "${simulations}sim3/"
+global density "${output}figures/density_1SD/"
+cap mkdir "$density"
+cap mkdir "${density}allbins"
+cap mkdir "${density}extreme"
 global real_outcomes "${output}/figures/real_outcomes/"
 
 /*********************************

@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=2_process_cftemp
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --array=1-24
+#SBATCH --cpus-per-task=8
+#SBATCH --array=2-3
 
-#SBATCH --mem=160GB
-#SBATCH --time=10:30:00
+#SBATCH --mem=150GB
+#SBATCH --time=48:00:00
 
 #SBATCH --mail-type=all
 

@@ -11,7 +11,7 @@ global repkit "`repkit'"
 
 do "${repkit}code/do/0_setup.do"
 
-log using "${log}3_3_density_plots/3_3_density_plots.txt", text replace
+log using "${log}3_2_analysis/3_2_3_density_plots.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
 /*********************************
@@ -28,6 +28,14 @@ local title_year = "Lin. in Year"
 local title_bayes = "Lin. in Year + Bayes"
 local title_chebyshev = "Chebyshev"
 
+local range_lin "-5(5)10"
+local range_quad "-200(200)400"
+local range_cubic "-20000(10000)20000"
+
+local title_lin "Linear"
+local title_quad "Quadratic"
+local title_cubic "Cubic"
+
 /*********************************
 Run
 *********************************/
@@ -37,7 +45,7 @@ foreach binform in allbins extreme {
             foreach power in lin quad cubic {
 
                   *** Import the appended csv
-                  import delimited "${intermediate}power_table_`power'_`binform'_`source'.csv", clear
+                  import delimited "${intermediate}power_table_`power'_`binform'_`source'_bin${binsize}.csv", clear
 
                   foreach bin in under_$lb_str over_$ub_str {
 
@@ -60,11 +68,11 @@ foreach binform in allbins extreme {
                         , ///
                         graphregion(color(white)) ///
                         xline(0, lcolor(gs10) lpattern(dash)) ///
-                        xlabel(, nogrid) ///
+                        xlabel(`range_`power'', nogrid) ///
                         ylabel(, nogrid) ///
                         xtitle("Coefficient", size(small)) ///
                         ytitle("Density", size(small)) legend(off)
-                        graph export "${density}`binform'/coef_plot_naive_`power'_`bin'_`source'.pdf", replace
+                        graph export "${density}`binform'/coef_plot_naive_`power'_`bin'_`source'_bin${binsize}.pdf", replace
 
                         twoway ///
                         (kdensity coef if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
@@ -76,9 +84,9 @@ foreach binform in allbins extreme {
                         xline(0, lcolor(gs10) lpattern(dash)) ///
                         xtitle("Coefficient", size(small)) ///
                         ytitle("Density", size(small)) legend(off) ///
-                        xlabel(, nogrid) ///
+                        xlabel(`range_`power'', nogrid) ///
                         ylabel(, nogrid)
-                        graph export "${density}`binform'/coef_plot_cftemp_`power'_`bin'_`source'.pdf", replace
+                        graph export "${density}`binform'/coef_plot_cftemp_`power'_`bin'_`source'_bin${binsize}.pdf", replace
 
                         * Plot distribution of tstat
                         twoway ///
@@ -96,7 +104,7 @@ foreach binform in allbins extreme {
                         ylabel(, nogrid) ///
                         xtitle("t-Stats", size(small)) ///
                         ytitle("Density", size(small)) legend(off)
-                        graph export "${density}`binform'/tstat_plot_naive_`power'_`bin'_`source'.pdf", replace
+                        graph export "${density}`binform'/tstat_plot_naive_`power'_`bin'_`source'_bin${binsize}.pdf", replace
 
                         twoway ///
                         (kdensity tstat if method == "naive", lpattern(solid) color("31 88 137") lwidth(thick)) ///
@@ -112,19 +120,19 @@ foreach binform in allbins extreme {
                         ylabel(, nogrid) ///
                         xtitle("t-Stats", size(small)) ///
                         ytitle("Density", size(small)) legend(off)
-                        graph export "${density}`binform'/tstat_plot_cftemp_`power'_`bin'_`source'.pdf", replace
+                        graph export "${density}`binform'/tstat_plot_cftemp_`power'_`bin'_`source'_bin${binsize}.pdf", replace
 
                         restore
                   }
 
                   * Legend
-                  file open legend using "${density}`binform'/legend_`power'_`source'.tex", write replace
+                  file open legend using "${density}`binform'/legend_`power'_`source'_bin${binsize}.tex", write replace
                   file write legend ///
-                  "\caption{Comparison of Reduced Form Solutions with Simulated Outcome Variable (Linear Trends) \label{fig:distributions-existing-solutions}}" _n ///
+                  "\caption{Comparison of Reduced Form Solutions with Simulated Outcome Variable (`title_`power'' Trends) \label{fig:distributions-existing-solutions}}" _n ///
                   "\caption*{\color{p1line}{\textbf{\textemdash\textemdash}} `title_naive' (Under 10 Bin: `sig_naive_under_10'\%, Over 90 Bin: `sig_naive_over_90'\%) \hspace{1cm} \color{p2line}{- - -} `title_stateyearFE' (`sig_stateyearFE_under_10'\%, `sig_stateyearFE_over_90'\%)}" _n ///
                   "\caption*{\color{p3line}{\textbf{- - -}} `title_lag3' (`sig_lag3_under_10'\%, `sig_lag3_over_90'\%) \hspace{1cm} \color{p4line}{\textbf{- - -}} `title_trends' (`sig_trends_under_10'\%, `sig_trends_over_90'\%)}" _n ///
                   "\caption*{\color{p5line}{\textbf{- - -}} `title_5year' (`sig_5year_under_10'\%, `sig_5year_over_90'\%)}" _n _n _n ///
-                  "\caption*{\color{p1line}{\textbf{\textemdash\textemdash}} title_naive' (Under 10 Bin: `sig_naive_under_10'\%, Over 90 Bin: `sig_naive_over_90'\%)}" _n ///
+                  "\caption*{\color{p1line}{\textbf{\textemdash\textemdash}} `title_naive' (Under 10 Bin: `sig_naive_under_10'\%, Over 90 Bin: `sig_naive_over_90'\%)}" _n ///
                   "\caption*{\color{p2line}{\textbf{- - -}} `title_bayes' (`sig_bayes_under_10'\%, `sig_bayes_over_90'\%)}" _n ///
                   "\caption*{\color{p3line}{\textbf{- - -}} `title_year' (`sig_year_under_10'\%, `sig_year_over_90'\%) \hspace{1cm} \color{p4line}{\textbf{- - -}} `title_chebyshev' (`sig_chebyshev_under_10'\%, `sig_chebyshev_over_90'\%)}"
                   file close legend

@@ -2,9 +2,8 @@
 #SBATCH --job-name=3_1_simulations
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --array=1,6
 
-#SBATCH --mem=100GB
+#SBATCH --mem=200GB
 #SBATCH --time=48:00:00
 
 #SBATCH --mail-type=all
@@ -12,7 +11,7 @@
 module purge
 module use $stata_path
 module load $stata_ver
-STATATMP="/nobackup1/$USER/tmp"
+STATATMP="/orcd/scratch/orcd/001/$USER/"
 export STATATMP
 
 mkdir -p ../../log/3_1_simulations/

@@ -9,6 +9,8 @@ Run setup file
 args data repkit startyear endyear
 global data "`data'"
 global repkit "`repkit'"
+local startyear = `startyear' + 1
+local endyear = `endyear' -1
 
 log using "${repkit}log/1_1_processERA5/1_1_2_processERA5.txt", text replace
 
@@ -20,7 +22,8 @@ display "Current time: " c(current_date) " " c(current_time)
 /*********************************
 Construct county-level ERA 5 data
 *********************************/
-use "${temp}2m_hourlyTemperature_US_`startyear'_`endyear'.dta", clear
+use "${temp}2m_dailyTemperature_US_`startyear'_`endyear'.dta", clear
+ds
 
 tempfile temperatureERALand
 save `temperatureERALand'

@@ -363,6 +363,8 @@ program define cftemp_sim
             /* egen numdays = rowtotal(under_* temp_* over_*) */
             sum numdays
             local maxdays = `r(max)'
+
+            drop real_*
       }
 
       * generate lags
@@ -399,7 +401,7 @@ program define cftemp_sim
             forvalues l = 1/`simulate' {
                   
                   * Temperature Variable
-                  quietly {
+                  /* quietly { */
                         if `option' == 1 {
 
                               gen simYearlyTemp = `temp' if `time' == 1
@@ -414,7 +416,7 @@ program define cftemp_sim
 
                                     * Create bin for below lower bound
                                     cap gen real_under_`lb_str' = 0
-                                    replace real_under_`lb_str' = real_under_`lb_str' + (tempDay`d' < `lb')
+                                    replace real_under_`lb_str' = real_under_`lb_str' + (tempDay`d' < `lb' & tempDay`d' != .)
                                     
                                     * Loop through the middle bins
                                     forvalues start = `lb'(`binsize')`ub_bin' {
@@ -424,16 +426,21 @@ program define cftemp_sim
                                           local end_label = cond(`end' <= 0, "n`=abs(`end')'", "`end'")
 
                                           cap gen real_`start_label'_`end_label' = 0
-                                          replace real_`start_label'_`end_label' = real_`start_label'_`end_label' + (tempDay`d' >= `start' & tempDay`d' < `end')
+                                          replace real_`start_label'_`end_label' = real_`start_label'_`end_label' + (tempDay`d' >= `start' & tempDay`d' < `end' & tempDay`d' != .)
                                     }
 
                                     * Create bin for above upper bound
                                     cap gen real_over_`ub_str' = 0
-                                    replace real_over_`ub_str' = real_over_`ub_str' + (tempDay`d' >= `ub')
+                                    replace real_over_`ub_str' = real_over_`ub_str' + (tempDay`d' >= `ub' & tempDay`d' != .)
                               }
+                              egen check = rowtotal(real_*)
+                              sum check
+                              assert check == numdays
+                              dis "assertion is true"
+                              drop check
 
                               * Simulate expected temperature bins
-                              if strpos("`compare_type'", "sim") > 0 {
+                              if strpos("`compare'", "sim") > 0 {
                                     drop exp_*
 
                                     cap gen exp_under_`lb_str' = 0
@@ -453,13 +460,20 @@ program define cftemp_sim
                                     replace exp_over_`ub_str' = numdays * (1 - normal((`ub'-simYearlyTemp)/`tempstddev'))
                               }
 
-                        }
-                  }
+                              egen check = rowtotal(exp_*)
+                              sum check
+                              assert round(check, 1) == numdays
+                              dis "assertion is true"
+                              drop check
+                              ds
 
-                  * random variable with mean 0 and std dev v^2
+                        }
+                  /* } */
+
+                  * random variable with mean 0 and std dev equal to baselinePeriodTemp * year
                   dis "`outcome_ff'"
                   dis "`realeffect'"
-                  gen random_Y = `outcome_ff' + rnormal(0,`twoStdDevValue') `realeffect'
+                  gen random_Y = `outcome_ff' + rnormal(0,`oneStdDevValue') `realeffect'
 
                   * regression
                   `regression' random_Y ``version'_bins' `control' `weight' `condition`restrict'', absorb(``version'_fe') cluster(`cluster')
@@ -490,7 +504,7 @@ program define cftemp_sim
                         local residualize = cond(strpos("`compare'", "cftemp") > 0, "`extreme_cftemp'", cond(strpos("`compare'", "lags") > 0, "`lags'", ""))
                         dis "`residualize'"
 
-                        reghdfe random_Y `residualize' `control', absorb(``version'_fe') cluster(`geo') resid(resid)
+                        reghdfe random_Y `residualize' `control' `condition`restrict'', absorb(``version'_fe') cluster(`geo') resid(resid)
 
                         //time trends
                         /* levelsof `geo', local(fips_code)
@@ -500,7 +514,7 @@ program define cftemp_sim
                               replace coefs = _b[`time'] if `geo' == `fip'
                         } */
                         
-                        statsby _b, by(`geo') clear: regress resid `time'
+                        statsby _b, by(`geo') clear: regress resid `time' `condition`restrict''
                         rename _b_`time' coefs
                         tempfile coef
                         save `coef', replace
@@ -509,11 +523,17 @@ program define cftemp_sim
                         use `save', clear
                         merge m:1 `geo' using `coef', nogen
                         
-                        keep coefs baselinePeriodTemp
+                        if "${method}" == "adapt" {
+                              keep coefs baselinePeriodTemp aboveMedian
+                        }
+                        else {
+                              keep coefs baselinePeriodTemp
+                        }
+                        
                         duplicates drop
 
                         //correlation with baseline temperature
-                        regress coefs baselinePeriodTemp
+                        regress coefs baselinePeriodTemp `condition`restrict''
                         local slope_Y = _b[baselinePeriodTemp]
 
                         // save correlation
@@ -573,10 +593,10 @@ program define cftemp_sim
                         // residualize
                         local residualize = cond(strpos("`compare'", "cftemp") > 0, "`extreme_cftemp'", cond(strpos("`compare'", "lags") > 0, "`lags'", ""))
 
-                        reghdfe real_`bin' `residualize' `control', absorb(``version'_fe') cluster(`geo') resid(resid)
+                        reghdfe real_`bin' `residualize' `control' `condition`restrict'', absorb(``version'_fe') cluster(`geo') resid(resid)
 
                         // trends
-                        statsby _b, by(`geo') clear: regress resid `time'
+                        statsby _b, by(`geo') clear: regress resid `time' `condition`restrict''
                         rename _b_`time' coefs
                         tempfile coef
                         save `coef', replace
@@ -584,11 +604,16 @@ program define cftemp_sim
                         // merge trends with baseline temperature 
                         use `save', clear
                         merge m:1 `geo' using `coef', nogen
-                        keep coefs baselinePeriodTemp
+                        if "${method}" == "adapt" {
+                              keep coefs baselinePeriodTemp aboveMedian
+                        }
+                        else {
+                              keep coefs baselinePeriodTemp
+                        }
                         duplicates drop
 
                         // get correlation and stats for the bias formula
-                        regress coefs baselinePeriodTemp
+                        regress coefs baselinePeriodTemp `condition`restrict''
                         global slope_`bin' = _b[baselinePeriodTemp]
                         global slope_`bin'_str : display %9.0g ${slope_`bin'}
 
@@ -604,7 +629,7 @@ program define cftemp_sim
                         global resid_`bin'_str = string(e(rss)/e(df_r), "%9.0g")
 
                         // variance of baseline temperature
-                        sum baselinePeriodTemp
+                        sum baselinePeriodTemp `condition`restrict''
                         global sigma_T0 = r(sd)
                         global sigma2_T0_str = string(round(${sigma_T0}^2, 0.01))
                         dis "Inside: ${sigma_T0}"
@@ -613,7 +638,7 @@ program define cftemp_sim
                         use `save', clear
                         
                         * Variance of the bins
-                        sum real_`bin'
+                        sum real_`bin' `condition`restrict''
                         local sigma_`bin' = r(sd)
 
                         replace slope_`bin' = ${slope_`bin'}
@@ -655,22 +680,30 @@ program define cftemp_sim
             }
 
             * save all simulation runs to folder
-            preserve
-            keep varName varNum coef se tstat pValue loop trend_Y `include'
-            dis "${bias2_over_`ub_str'}"
-            gen method = "${method}"
-            gen source = "${source}"
-            duplicates drop
-            drop if varName == ""
-            order source method varName varNum coef se tstat pValue trend_Y `include' loop
+            if `option' == 2 & "${method}" != "state" & "${method}" != "decade"  {
+                  preserve
+                  keep varName varNum coef se tstat pValue loop trend_Y `include'
+                  dis "${bias2_over_`ub_str'}"
+                  gen method = "${method}"
+                  gen source = "${source}"
+                  duplicates drop
+                  drop if varName == ""
+                  order source method varName varNum coef se tstat pValue trend_Y `include' loop
 
-            if `effect' == 0 {
-                  export delimited "${temp}cftemp_${source}_`outcome_method'_`binform'_${task}.csv", replace
+                  if `effect' == 0 & "${method}" != "adapt" {
+                        //here, the second version (if there is one) overwrites the first
+                        export delimited "${temp}cftemp_${source}_bin`binsize'_`outcome_method'_`binform'_${task}.csv", replace
+                  }
+                  else if `effect' == 0 & "${method}" == "adapt" {
+                        //here, both versions are saved under different names
+                        export delimited "${temp}cftemp_${source}_bin`binsize'_`outcome_method'_`binform'_${task}_het`i'.csv", replace
+                  }
+                  else {
+                        //here, the second version (if there is one) overwrites the first
+                        export delimited "${temp}cftemp_${source}_bin`binsize'_`outcome_method'_effect`effect'_`binform'_${task}.csv", replace
+                  }
+                  restore
             }
-            else {
-                  export delimited "${temp}cftemp_${source}_`outcome_method'_effect`effect'_`binform'_${task}.csv", replace
-            }
-            restore
 
             * graph evolution of coefficients
             gen variable`i' = _n
@@ -712,14 +745,29 @@ program define cftemp_sim
             }
 
             if `version_num' == 1 {
-                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white) lcolor(none))
+                  if "`slope_str'" == "0" {
+                        local ylabels = "-2(2)6"
+                  }
+
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) `graph' graphregion(color(white) lcolor(none)) legend(off) //legend(order(1 "`title0'") position(6) rows(1) region(lcolor(none)) `legendhet')
             }
 
             if `effect' == 0 {
-                  graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_${method}.pdf", replace
+                  if `ub' == 100 {
+                        if `omit' == 7 {
+                              graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_bin`binsize'_over100_omit7_${method}.pdf", replace
+                        }
+                        else {
+                              graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_bin`binsize'_over100_${method}.pdf", replace
+                        }
+                  }
+                  else {
+                        graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_bin`binsize'_${method}.pdf", replace
+                  }
+                  
             }
             else {
-                  graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_effect`effect'_${source}_${method}.pdf", replace
+                  graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_effect`effect'_${source}_bin`binsize'_${method}.pdf", replace
             }
 
             * Display notification for completion

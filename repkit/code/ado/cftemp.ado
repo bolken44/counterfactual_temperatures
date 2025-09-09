@@ -18,7 +18,7 @@ qui run "${ado}cftemp_base.ado"
 
 program define cftemp
     /* version 18.0 */
-    syntax varlist(min=4 max=4) [, binsize(real 5) lb(real -10) ub(real 35) time(varlist) realonly parallel(real 0) keep(string) trend(string) bayes(string) splines  aggregate(real 5)]
+    syntax varlist(min=4 max=4) [, binsize(real 5) lb(real -10) ub(real 35) time(varlist) realonly parallel(real 0) keep(varlist) trend(string) bayes(string)]
 	
 	* If the parallel option is specified, set the specified number of CPUs and run parallelized by the geographic unit
 	if `parallel' > 0 {
@@ -34,13 +34,13 @@ program define cftemp
 			local geo "geo_num"
 			sort geo_num
 		
-		parallel, by(geo_num) programs(cftemp_base): cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') keep(`geo_orig' `keep') `realonly' trend(`trend') bayes(`bayes') `splines' aggregate(`aggregate')
+		parallel, by(geo_num) programs(cftemp_base): cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') keep(`geo_orig' `keep') `realonly' trend(`trend') bayes(`bayes')
 		/* parallel clean */
 		/* } */
 	}
 	
 	* If the parallel option is not specified, simply run all geographic units
 	else {
-		cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') `realonly' trend(`trend') bayes(`bayes') `splines' aggregate(`aggregate')
+		cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') `realonly' trend(`trend') bayes(`bayes')
 	}
 end
