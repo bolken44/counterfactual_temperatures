@@ -745,7 +745,7 @@ program define cftemp_sim
             }
 
             if `version_num' == 1 {
-                  if "`slope_str'" == "0" {
+                  if "`slope_str'" == "0" & `option' == 2 {
                         local ylabels = "-2(2)6"
                   }
 
@@ -762,7 +762,12 @@ program define cftemp_sim
                         }
                   }
                   else {
-                        graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_bin`binsize'_${method}.pdf", replace
+                        if `omit' == 7 {
+                              graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_bin`binsize'_omit7_${method}.pdf", replace
+                        }
+                        else {
+                              graph export "${simulations}sim`option'/sim`option'_`outcome_method'`slope_str'_${source}_bin`binsize'_${method}.pdf", replace
+                        }
                   }
                   
             }

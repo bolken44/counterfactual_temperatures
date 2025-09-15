@@ -82,7 +82,9 @@ global density "${output}figures/density_1SD/"
 cap mkdir "$density"
 cap mkdir "${density}allbins"
 cap mkdir "${density}extreme"
-global real_outcomes "${output}/figures/real_outcomes/"
+
+cap mkdir "${figures}real_outcomes/"
+cap mkdir "${figures}scatter/"
 
 /*********************************
 Install Required Packages

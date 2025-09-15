@@ -1,7 +1,9 @@
 /*******************************************************************************
 AUTHOR: Harufumi Nakazawa
 DATE: May 2025
-ACTION: Creates dataset to run fourth-order polynomials spec from Carleton et al (2022)
+ACTION: Runs
+- simulation 2 under non-standard specifications
+- simulations 3
 *******************************************************************************
 Set Up
 *********************************/
@@ -24,7 +26,6 @@ local combo2 "era5 decade"
 local combo3 "era5 kdd"
 local combo4 "era5 poly4"
 local combo5 "era5 magnitude"
-local combo6 "era5 sim3"
 
 local source = word("`combo`task''", 1)
 local method = word("`combo`task''", 2)
@@ -33,11 +34,62 @@ local method = word("`combo`task''", 2)
 di "Slurm task `task': source=`source', method=`method'"
 
 * For sim 3, parallelize the outcome variable
-local outcomes "mortality_more65 violentCrime nonViolentCrime logCornOutput logSoyOutput logWheatOutput"
-if "`method'" == "sim3" {
+local outcomes "more65 violent nonViolent corn soy wheat" //allAges less1 1_44 45_64 more65
+if `task' > 5 {
       local j = `task' - 5
       local outcome = word("`outcomes'", `j')
+      di "Outcome: `outcome'"
 }
+
+/*********************************
+* Add outcome variables
+*********************************/
+*** crime (month level regressions)
+if "`outcome'" == "violent" | "`outcome'" == "nonViolent" {
+      use "${outcomes}Ranson_2012.dta", clear
+
+      keep if year >= 1970
+      keep month pop rate_allcrimes rate_murder rate_rape rate_robbery rate_assaultaggr rate_larceny state county year
+	
+      * collapse to year level
+	collapse (sum) rate_allcrimes rate_murder rate_rape rate_robbery rate_assaultaggr rate_larceny, by(county year)
+      
+      rename county fips
+      destring fips, replace
+      replace fips = 46102 if fips == 46113
+
+      * generate outcome variable
+      /* egen violent = rowtotal(rate_murder rate_rape rate_assaultaggr)
+      egen nonViolent = rowtotal(rate_robbery rate_larceny) */
+}
+
+*** crops
+if "`outcome'" == "corn" | "`outcome'" == "soy" | "`outcome'" == "wheat" {
+      use "${outcomes}`outcome'.dta", clear
+
+      destring fips, replace
+      rename value `outcome'Output
+      gen `outcome' = log(`outcome'Output)
+      
+      * keep relevant time period
+      keep if inrange(year,1970,2019)
+}
+
+**** mortality (full panel)
+if "`outcome'" == "more65" {
+      use "${outcomes}mortality_countyPanel_19682016.dta", clear
+
+      * construct mortality rates
+      gen `outcome' = (deaths_`outcome'/population_`outcome')*100000
+
+      * keep relevant time period
+      keep if inrange(year,1970,2019) //68-
+}
+
+gen agno = year
+sum fips
+tempfile `outcome'ByFips
+save ``outcome'ByFips', replace
 
 /*********************************
 Locals
@@ -47,23 +99,30 @@ local base_prism_1950 = 1960
 local base_prism_1970 = 1980
 local base_ghcn = 1980
 
+* Sample period start year
+local minyear_ghcn = 1968
+local minyear_era5_F = 1970
+
 local omit = 55 // for polynomials
 
 global source = "`source'"
 global method = "`method'"
 
+* average temperature (delete later)
 use "${weather}countyannual_US_1970_2019.dta", clear
+/* use "${weather}countyLevel_USPanel_1970_2019_v2.dta", clear  // this is what Cristine used originally
+replace avg_yearly_temp = (avg_yearly_temp * 9/5) + 32 */
 tempfile `source'_avgtemp
 save ``source'_avgtemp', replace
 
 /*********************************
 Prepare Dataset
 *********************************/
-if "`method'" == "state" | "`method'" == "decade" | "`method'" == "magnitude" {
+if "`method'" == "state" | "`method'" == "decade" | "`method'" == "magnitude" | `task' > 5 {
       /* use "${temperature}`source'_UScounty_cftemp_F_bin10_year.dta", clear */
       use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
 }
-else {
+else if "`method'" == "poly4" | "`method'" == "kdd" {
       use "${temperature}`source'_UScounty_`method'_F.dta", clear
 }
 
@@ -72,13 +131,14 @@ drop if year > 2019 | year < 1970
 
 * Merge average temps
 merge m:1 year fips using ``source'_avgtemp'
-keep if _merge == 3
+assert _merge == 3
 drop _merge
 
 * add state information
 merge m:1 fips using "${data}UScounty_state_crosswalk.dta"
 egen stateCode = group(state)
 drop if state == "AK" | state == "PR" | state == "HI"
+drop _merge
 
 * create pre period temperature
 gen baselinePeriodTemp = avg_yearly_temp if year <= 1980
@@ -88,6 +148,7 @@ bysort fips: ereplace baselinePeriodTemp = mean(baselinePeriodTemp)
 gen agno = year
 sum year
 replace year = year - `r(min)' + 1
+xtset fips year
 
 * generate variables to fill
 gen varName = ""
@@ -96,11 +157,6 @@ gen coef = .
 gen sE = .
 gen varNum = .
 gen pValue = .
-
-* Normalize year to start at 1
-sum year
-replace year = year - `r(min)' + 1
-xtset fips year
 
 * Save temperature std deviation
 gen temp = year * baselinePeriodTemp
@@ -325,7 +381,7 @@ if "`method'" == "magnitude" {
             local plotDescription = "`plotDescription'" + " " + "(line beta_`beta' varNum, lcolor(gs9))"
       }
 
-      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small)) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = 0.0001 {&sigma}" 53 "{&beta}  = 0.0025 {&sigma}" 54 "{&beta}  = 0.005 {&sigma}" 55 "{&beta}  = 0.01 {&sigma}") pos(6) rows(1) size(medsmall))
+      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) ylabel(, nogrid) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = 0.0001 {&sigma}" 53 "{&beta}  = 0.0025 {&sigma}" 54 "{&beta}  = 0.005 {&sigma}" 55 "{&beta}  = 0.01 {&sigma}") pos(6) rows(1) size(medsmall))
       graph export "${simulations}sim2/sim2_lin1_`source'_`method'_F.pdf", replace
 
 
@@ -339,7 +395,7 @@ if "`method'" == "magnitude" {
             local plotDescription = "`plotDescription'" + " " + "(line beta_`beta' varNum, lcolor(gs9))"
       }
 
-      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small)) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = -0.0001 {&sigma}" 53 "{&beta}  = -0.0025 {&sigma}" 54 "{&beta}  = -0.005 {&sigma}" 55 "{&beta}  = -0.01 {&sigma}") pos(6) rows(1) size(medsmall))
+      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) ylabel(, nogrid) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = -0.0001 {&sigma}" 53 "{&beta}  = -0.0025 {&sigma}" 54 "{&beta}  = -0.005 {&sigma}" 55 "{&beta}  = -0.01 {&sigma}") pos(6) rows(1) size(medsmall))
       graph export "${simulations}sim2/sim2_linneg1_`source'_`method'_F.pdf", replace
 }
 
@@ -347,32 +403,38 @@ if "`method'" == "magnitude" {
 /*********************************
 Simulation 3
 *********************************/
-if "`method'" == "sim3" {
+if `task' > 5 {
+
+      merge 1:1 fips agno using ``outcome'ByFips'
+      drop if _merge == 2
+      drop agno
+
+      * generate outcome variable for crime
+      if "`outcome'" == "violent" | "`outcome'" == "nonViolent" {
+            egen violent = rowtotal(rate_murder rate_rape rate_assaultaggr)
+            egen nonViolent = rowtotal(rate_robbery rate_larceny)
+      }
+      if "`outcome'" == "more65" {
+            replace more65 = . if year > 2002
+      }
 
       * gen tag to plot one observation per county
       egen tag = tag(fips)
 
 	************************* outcome trend 
 	reghdfe `outcome', absorb(fips year alphaCoefficient = i.fips#c.year)
+
 	* assign alpha coefficient to all 
 	rename alphaCoefficientSlope1 alphaCoefficient
-	bysort fips: ereplace alphaCoefficient = mean(alphaCoefficient)	
+	bysort fips: ereplace alphaCoefficient = mean(alphaCoefficient)
 		
 	* plot slope of outcome against baseline temperature
-	tw (scatter alphaCoefficient baselinePeriodTemp if tag == 1, color(%40)) (lfit alphaCoefficient baselinePeriodTemp if tag == 1,lwidth(thick)), legend(off) ytitle("County specific trend") xtitle("Baseline temperature")
-	graph export "Panel (ERA Land + WM)/countyLevel/Figures/simulation3_`outcome'Trend_F.pdf", replace
+	tw (scatter alphaCoefficient baselinePeriodTemp if tag == 1, color(navy%30)) (lfit alphaCoefficient baselinePeriodTemp if tag == 1,lwidth(thick)), legend(off) ytitle("County specific trend") xtitle("Baseline temperature") xlabel(, nogrid)ylabel(, nogrid)
+	graph export "${simulations}sim3/sim3_`outcome'Trend_F.pdf", replace
 			
 	drop alphaCoefficient
 
 preserve
-
-	* generate variables to fill
-	gen varName = ""
-	gen loop = .
-	gen coef = .
-	gen sE = .
-	gen varNum = .
-	gen pValue = .
 	
 	**** step 1: run regression and store fixed effect coefficients
 	gen constant_1 = .
@@ -393,8 +455,6 @@ preserve
 
 	gen betaCoefficient = .
 	gen constant_2 = .
-
-	egen tag = tag(fips)
 	
 	* run regression once for each fips 
 	reg alphaCoefficient baselinePeriodTemp if tag == 1
@@ -413,19 +473,16 @@ preserve
 		local sdEpsilon_2 = `r(sd)'
 
 	**** step 4:  loop over the different regression versions and simulate
-
-	* set iteration variable
-	local x = 1
 	
 	* run regression 1000 times 
-	forvalues l = 1/1000{
+	forvalues l = 1/1000 {
 		
 		* random variable based on results obtained above 
 		gen random_Y = fipsFE + constant_1 + (constant_2 + betaCoefficient * baselinePeriodTemp) * year + rnormal(0,`sdEpsilon_1') // BETA METHOD
 //		gen random_Y = fipsFE + constant_1 + alphaCoefficient * year + rnormal(0,`sdEpsilon_1') // ALPHA METHOD
 
 		* run regression
-		qui reghdfe random_Y real_under_10 real_10_20 real_20_30 real_30_40 real_40_50 real_60_70 real_70_80 real_80_90 real_over_90, absorb(fips year)
+		reghdfe random_Y real_under_10 real_10_20 real_20_30 real_30_40 real_40_50 real_60_70 real_70_80 real_80_90 real_over_90, absorb(fips year)
 	
 		* save variables
 		foreach var in real_under_10 real_10_20 real_20_30 real_30_40 real_40_50 real_60_70 real_70_80 real_80_90 real_over_90{
@@ -455,8 +512,7 @@ preserve
 		_pctile meanCoef, nq(1000)
 			local p25`var' = `r(r25)'
 			local p975`var' = `r(r975)'
-		ereplace meanCoef = mean(meanCoef)
-			local meanCoef`var': di %5.4f meanCoef
+			local meanCoef`var' = `r(r500)'
 							
 		* drop variables
 		drop meanCoef 
@@ -504,8 +560,8 @@ preserve
 	sort variable
 
 	* plot results by themselves 
-	graph tw (scatter coefficient variable) (rcap p25 p975 variable), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small)) xtitle("") legend(order(2 "2.5 - 97.5 pctile") position(6)) yline(0, lpattern(dash) lcolor(red))
-	graph export "${simulations}/sim3_era5_`outcome'_naive.pdf", replace
+	graph tw (scatter coefficient variable, color("31 88 137")) (rcap p25 p975 variable, color("31 88 137")), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) xtitle("") legend(off) yline(0, lpattern(dash) lcolor(red)) ylabel(, nogrid)
+	graph export "${simulations}sim3/sim3_era5_`outcome'_naive.pdf", replace
 
 	drop variable coefficient p25 p975 
 	

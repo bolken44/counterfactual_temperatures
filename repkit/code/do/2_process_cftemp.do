@@ -31,10 +31,11 @@ local combo5 "era5 naive year 20"
 local combo6 "prism_1950 naive year 10"
 local combo7 "ghcn naive year 10"
 
-* Robustness: KDD
+* Robustness: alternative nonlinear specs
 local combo8 "era5 naive year kdd"
 local combo9 "era5 naive year poly4"
 
+* Experiment (bin over 100)
 local combo10 "era5 naive year 10"
 
 * Extract components from the combo based on task

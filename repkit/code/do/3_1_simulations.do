@@ -5,8 +5,6 @@ ACTION: Runs all simulations.
 *******************************************************************************
 Set Up
 *********************************/
-log close _all
-
 args data repkit task
 global data "`data'"
 global repkit "`repkit'"
@@ -36,11 +34,12 @@ local combo20 "era5 naive allbins 20"
 * Robustness: alternative sources
 local combo21 "prism_1950 naive allbins 10"
 local combo22 "ghcn naive allbins 10"
+local combo23 "era5_C adapt allbins 10"
 
 * Simulation 1 with Counterfactual Control
-local combo23 "era5 sim allbins 10"
 local combo24 "era5 sim allbins 10"
 local combo25 "era5 sim allbins 10"
+local combo26 "era5 sim allbins 10"
 
 * Count items in each dimension for existing permutations
 local n_sources  : word count `sources'
@@ -105,7 +104,7 @@ if strpos("`source'", "prism") {
 }
 
 * ERA 5 yearly averages
-if "`source'" == "era5"{
+if strpos("`source'", "era5") > 0 {
       /* use "${raw}countyLevel_USPanel_1970_2019.dta", clear
             //this uses ERA Land, not ERA 5
 
@@ -115,6 +114,9 @@ if "`source'" == "era5"{
       duplicates drop */
 
       use "${weather}countyannual_US_1970_2019.dta", clear //this comes from "${path}/DTA_US/countyLevel_US_1970_2019.dta", which is day level data converted to F then collapsed to annual mean
+      if "`source'" == "era5_C" {
+            replace avg_yearly_temp = (avg_yearly_temp - 32) * (5/9)
+      }
 }
 
 sum avg_yearly_temp
@@ -163,6 +165,7 @@ local row = "`row' \midrule \multirow{8}{*}{`title_`source''}"
 Locals
 *********************************/
 local base_era5 = 1980
+local base_era5_C = 1980
 local base_prism_1950 = 1960
 local base_prism_1970 = 1980
 local base_ghcn = 1980
@@ -195,6 +198,7 @@ Main script
             use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
             /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_over100_naive.dta", clear */
       }
+      * Other data sources
       else {
             /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear */
             if "`source'" == "ghcn" {
@@ -202,6 +206,9 @@ Main script
             }
             else if "`source'" == "prism_1950" {
                   use "${weather}schlenker_UScounty_1950_2019_cftemp_F.dta", clear
+            }
+            else if "`source'" == "era5_C" {
+                  use "${weather}era5_UScounty_1970_2019_cftemp.dta", clear
             }
       }
 
@@ -254,34 +261,42 @@ Main script
             ********************************* Simulations with simulated temperature data (sim1)
             * Linear trends
             if "`source'" == "era5" & "`method'" == "naive" & "`binsize'" == "10" {
-                  forval slope = -1(1)1 {
-                        /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(none) fe(fips year) cluster(fips) */
+                  forval slope = -1(1)1 { //
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(none) fe(fips year) cluster(fips)
                   }
             }
             if  "`method'" == "sim" {
-                  if `task' == 23 {
+                  if `task' == 24 {
                         cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(naive sim) fe(fips year) cluster(fips)
                   }
-                  if `task' == 24 {
+                  if `task' == 25 {
                         cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(naive sim) fe(fips year) cluster(fips)
                   }
-                  if `task' == 25 {
+                  if `task' == 26 {
                         cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(naive sim) fe(fips year) cluster(fips) effect(50)
                   }
             }
             
             ********************************* Simulations with real temperature data (sim2)
-            * Linear trends
+            * Naive
             if "`source'" == "era5" & "`method'" == "naive" & "`binsize'" == "10" {
                   forval slope = -1(1)1 {
                         cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) graph(`graph_`slope'')
                   }
             }
-            else {
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) graph(`graph_1')
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(7) compare(`compare2') fe(fips year) cluster(fips) graph(`graph_1')
+            else if "`source'" == "era5_C" {
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(5) lb(-10) ub(35) omit(8) compare(`compare2') fe(fips year) cluster(fips)
+            }
+            else { //everything including adaptation
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) //graph(`graph_1')
             }
 
+            * Extra spec (omit 7th bin) for adaptation
+            if strpos("`method'", "adapt") > 0 {
+                  /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(7) compare(`compare2') fe(fips year) cluster(fips) */
+            }
+
+            * Everything except adaptation
             if "`source'" == "era5" & strpos("`method'", "adapt") <= 0 & "`binsize'" == "10" {
                   * Quadratic trends
                   cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips)
@@ -313,186 +328,3 @@ Main script
       }
 
 log close
-exit
-
-********************************************************************************
-** SIMULATION 3
-********************************************************************************
-foreach source in era5 { //prism_1950 ghcn era5
-
-      * Prepare dataset
-      use "`data_`source''", clear
-
-      xtset fips year
-      drop if year > 2019 | year < 1970
-
-      * Merge average temps
-      merge m:1 year fips using ``source'_avgtemp'
-      keep if _merge == 3
-      drop _merge
-
-      * add state information
-      merge m:1 fips using "${data}UScounty_state_crosswalk.dta"
-      /* drop if _merge != 3 */
-      drop _merge
-      egen stateCode = group(state)
-      drop if state == "AK" | state == "PR" | state == "HI"
-
-      * create pre period temperature
-      gen baselinePeriodTemp = avg_yearly_temp if year <= 1980
-      bysort fips: ereplace baselinePeriodTemp = mean(baselinePeriodTemp)
-      sum year
-      replace year = year - `r(min)' + 1
-
-      foreach outcome in mortality_more65 { //violentCrime nonViolentCrime logCornOutput logWheatOutput logSoyOutput
-
-            preserve
-
-            merge 1:1 fips year using `mortalityByFips', keep(match master) nogen
-            keep if year <= 2002
-
-                  * generate variables to fill
-                  gen varName = ""
-                  gen loop = .
-                  gen coef = .
-                  gen sE = .
-                  gen varNum = .
-                  gen pValue = .
-                  
-                  **** step 1: run regression and store fixed effect coefficients
-                  gen constant_1 = .
-
-                  reghdfe `outcome', absorb(fipsFE = fips yearFE = year alphaCoefficient = i.fips#c.year) residual(epsilon_1)
-                  * extract constant of regression
-                  replace constant_1 = _b[_cons]
-                  * assign fips FE for all rows
-                  bysort fips: ereplace fipsFE = mean(fipsFE)
-                  * assign alpha coefficient to all 
-                  rename alphaCoefficientSlope1 alphaCoefficient
-                  bysort fips: ereplace alphaCoefficient = mean(alphaCoefficient)
-                        
-                  **** step 2: run regression over estimated trends
-
-                  gen betaCoefficient = .
-                  gen constant_2 = .
-
-                  egen tag = tag(fips)
-                  
-                  * run regression once for each fips 
-                  reg alphaCoefficient baselinePeriodTemp if tag == 1
-                  * extract coefficient
-                  replace betaCoefficient = _b[baselinePeriodTemp]
-                  replace constant_2 = _b[_cons]
-                  * extract residual
-                  predict epsilon_2, residuals
-
-                  **** step 3: create standard error variables for synthetic outcome
-
-                  sum epsilon_1
-                        local sdEpsilon_1 = `r(sd)'	
-                  sum epsilon_2
-                        local sdEpsilon_2 = `r(sd)'
-
-                  **** step 4:  we loop over the different regression versions and simulate
-
-                  * set iteration variable
-                  local x = 1
-                  
-                  * run regression 1000 times 
-                  forvalues l = 1/1000{
-                        
-                        * random variable based on results obtained above 
-                        gen random_Y = fipsFE + constant_1 + (constant_2 + betaCoefficient * baselinePeriodTemp) * year + rnormal(0,`sdEpsilon_1') // BETA METHOD
-            //		gen random_Y = fipsFE + constant_1 + alphaCoefficient * year + rnormal(0,`sdEpsilon_1') // ALPHA METHOD
-
-                        * run regression
-                        qui reghdfe random_Y real_under_10 real_10_20 real_20_30 real_30_40 real_40_50 real_60_70 real_70_80 real_80_90 real_over_90, absorb(fips year)
-                  
-                        * save variables
-                        foreach var in real_under_10 real_10_20 real_20_30 real_30_40 real_40_50 real_60_70 real_70_80 real_80_90 real_over_90{
-                              * save lincom values in generated variable
-                                    qui lincom `var'
-                                    replace varName = "`var'" 		if _n == `x'
-                                    replace varNum 	= `x'*100 		if _n == `x'
-                                    replace coef 	= `r(estimate)' if _n == `x'
-                                    replace sE 		= `r(se)' 		if _n == `x'
-                                    replace pValue 	= `r(p)' 		if _n == `x'
-                                    replace loop 	= `l'			if _n == `x'
-                  
-                              * replace iteration variable
-                              local x = `x' + 1
-                        }
-                        
-                        * drop randomly generated variable
-                        drop random_Y
-                  }
-                        
-                  * generate variables for plot legend:
-                  foreach var in real_under_10 real_10_20 real_20_30 real_30_40 real_40_50 real_60_70 real_70_80 real_80_90 real_over_90{
-                        
-                        * coefficients by group
-                        gen meanCoef = coef
-                              replace meanCoef = . if varName != "`var'"
-                        _pctile meanCoef, nq(1000)
-                              local p25`var' = `r(r25)'
-                              local p975`var' = `r(r975)'
-                        ereplace meanCoef = mean(meanCoef)
-                              local meanCoef`var': di %5.4f meanCoef
-                                                      
-                        * drop variables
-                        drop meanCoef 
-
-                  }
-                                          
-                  * graph evolution of coefficients
-                  gen variable = _n
-                        replace variable = . if variable > 10
-                        
-                  gen coefficient = .
-                        replace coefficient = `meanCoefreal_under_10' 			if variable == 1
-                        replace coefficient = `meanCoefreal_10_20' 				if variable == 2
-                        replace coefficient = `meanCoefreal_20_30' 				if variable == 3
-                        replace coefficient = `meanCoefreal_30_40' 				if variable == 4
-                        replace coefficient = `meanCoefreal_40_50' 				if variable == 5
-                        replace coefficient = 0 								if variable == 6
-                        replace coefficient = `meanCoefreal_60_70' 				if variable == 7 
-                        replace coefficient = `meanCoefreal_70_80' 				if variable == 8
-                        replace coefficient = `meanCoefreal_80_90' 				if variable == 9
-                        replace coefficient = `meanCoefreal_over_90' 			if variable == 10
-
-                  gen p25 = .
-                        replace p25 = `p25real_under_10' 		if variable == 1
-                        replace p25 = `p25real_10_20' 			if variable == 2
-                        replace p25 = `p25real_20_30' 			if variable == 3
-                        replace p25 = `p25real_30_40' 			if variable == 4
-                        replace p25 = `p25real_40_50' 			if variable == 5
-                        replace p25 = `p25real_60_70' 			if variable == 7
-                        replace p25 = `p25real_70_80' 			if variable == 8
-                        replace p25 = `p25real_80_90' 			if variable == 9
-                        replace p25 = `p25real_over_90' 		if variable == 10
-                        
-                  gen p975 = .
-                        replace p975 = `p975real_under_10' 				if variable == 1
-                        replace p975 = `p975real_10_20' 				if variable == 2
-                        replace p975 = `p975real_20_30' 				if variable == 3
-                        replace p975 = `p975real_30_40' 				if variable == 4
-                        replace p975 = `p975real_40_50' 				if variable == 5
-                        replace p975 = `p975real_60_70' 				if variable == 7
-                        replace p975 = `p975real_70_80' 				if variable == 8
-                        replace p975 = `p975real_80_90' 				if variable == 9
-                        replace p975 = `p975real_over_90' 				if variable == 10
-
-                  sort variable
-
-                  * plot results by themselves 
-                  graph tw (scatter coefficient variable, color("31 88 137")) (rcap p25 p975 variable, color("155 52 58")), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small)) xtitle("") legend(order(2 "2.5 - 97.5 pctile") position(6)) yline(0, lpattern(dash) lcolor(red)) ylabel(-2(2)8, angle(h))
-                  cap mkdir "${output}sim3/`source'/"
-                  graph export "${output}sim3/`source'/sim3_`outcome'_`source'.pdf", replace
-
-                  drop variable coefficient p25 p975 
-                  
-            restore
-
-      }
-
-}

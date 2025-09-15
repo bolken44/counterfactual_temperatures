@@ -3,7 +3,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 
-#SBATCH --mem=160GB
+#SBATCH --mem=40GB
 #SBATCH --time=10:30:00
 
 #SBATCH --mail-type=all
@@ -16,4 +16,4 @@ export STATATMP
 
 mkdir -p ../../log/4_real_outcomes/
 
-stata-mp -b do 4_real_outcomes.do
+stata-mp -b do 4_real_outcomes.do ${data} ${repkit}
