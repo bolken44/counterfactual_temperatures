@@ -1,8 +1,8 @@
-# cftemp - Stata package to create realized and counterfactual temperature bin variables
+# Stata command `cftemp`
 
 The `cftemp` program takes a panel dataset with some fine temporal variation in temperature (say, place-day level) and transforms it to an aggregated panel dataset (say, place-year level) with variables holding the *realized* and *expected* number of days that fall in each of a user-specified set of temperature bins.
 
-The theory and empirical applications are developed in our paper "With or Without U? Binning Bias and the Causal Effects of Temperature Shocks" by Benjamin F. Jones, Jacob Moscona, Benjamin A. Olken, and Cristine von Dessauer.
+The theory and empirical applications are developed in our paper ["With or Without U? Binning Bias and the Causal Effects of Temperature Shocks"](https://www.dropbox.com/scl/fi/1ya6zzb76g0eayicexr2g/U_Shapes_Paper.pdf?rlkey=rkwfyw4m8iecn1uasrnasaz1m&e=7&st=b5cwqvs7&dl=0) by Benjamin F. Jones, Jacob Moscona, Benjamin A. Olken, and Cristine von Dessauer.
 
 
 ## Syntax
