@@ -10,6 +10,7 @@
 
 clear
 set more off
+set scheme s2color
 
 /*********************************
 Set Seed

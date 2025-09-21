@@ -198,6 +198,10 @@ Main script
             use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
             /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_over100_naive.dta", clear */
       }
+      * Alternative bin sizes
+      else if "`source'" == "era5" & "`binsize'" != "10" {
+            use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear
+      }
       * Other data sources
       else {
             /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear */
@@ -261,7 +265,7 @@ Main script
             ********************************* Simulations with simulated temperature data (sim1)
             * Linear trends
             if "`source'" == "era5" & "`method'" == "naive" & "`binsize'" == "10" {
-                  forval slope = -1(1)1 { //
+                  foreach slope in 1 { //forval slope = -1(1)1
                         cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(none) fe(fips year) cluster(fips)
                   }
             }
@@ -293,7 +297,7 @@ Main script
 
             * Extra spec (omit 7th bin) for adaptation
             if strpos("`method'", "adapt") > 0 {
-                  /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(7) compare(`compare2') fe(fips year) cluster(fips) */
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(7) compare(`compare2') fe(fips year) cluster(fips)
             }
 
             * Everything except adaptation

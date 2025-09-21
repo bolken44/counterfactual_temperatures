@@ -86,10 +86,12 @@ if "`outcome'" == "more65" {
       keep if inrange(year,1970,2019) //68-
 }
 
-gen agno = year
-sum fips
-tempfile `outcome'ByFips
-save ``outcome'ByFips', replace
+if `task' > 5 {
+      gen agno = year
+      sum fips
+      tempfile `outcome'ByFips
+      save ``outcome'ByFips', replace
+}
 
 /*********************************
 Locals
@@ -254,7 +256,7 @@ if "`method'" == "kdd" {
             xlabel(, labsize(small) nogrid) ///
             xtitle("") ///
             yline(0, lpattern(dash) lcolor(red)) ///
-            ylabel(, angle(h) nogrid) legend(off)
+            ylabel(, angle(h) nogrid) legend(off) graphregion(color(white))
       graph export "${simulations}sim2/sim2_lin1_`source'_`method'_F.pdf", replace
 }
 
@@ -323,7 +325,7 @@ if "`method'" == "poly4" {
             xlabel(, labsize(small) nogrid) ///
             xtitle("") ///
             yline(0, lpattern(dash) lcolor(red)) ///
-            ylabel(, angle(h) nogrid) legend(off)
+            ylabel(, angle(h) nogrid) legend(off) graphregion(color(white))
       graph export "${simulations}sim2/sim2_lin1_`source'_`method'_F.pdf", replace
 
 }
@@ -332,6 +334,7 @@ if "`method'" == "poly4" {
 Simulation Plot by Magnitudes of Outcome Trend
 *********************************/
 if "`method'" == "magnitude" {
+
 	replace varName = "real_under_10" 		if _n == 1
 	replace varName = "real_10_20" 		if _n == 2
 	replace varName = "real_20_30" 		if _n == 3
@@ -381,7 +384,7 @@ if "`method'" == "magnitude" {
             local plotDescription = "`plotDescription'" + " " + "(line beta_`beta' varNum, lcolor(gs9))"
       }
 
-      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) ylabel(, nogrid) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = 0.0001 {&sigma}" 53 "{&beta}  = 0.0025 {&sigma}" 54 "{&beta}  = 0.005 {&sigma}" 55 "{&beta}  = 0.01 {&sigma}") pos(6) rows(1) size(medsmall))
+      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) ylabel(, nogrid) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = 0.0001 {&sigma}" 53 "{&beta}  = 0.0025 {&sigma}" 54 "{&beta}  = 0.005 {&sigma}" 55 "{&beta}  = 0.01 {&sigma}") pos(6) rows(1) size(medsmall) region(lcolor(none))) graphregion(color(white))
       graph export "${simulations}sim2/sim2_lin1_`source'_`method'_F.pdf", replace
 
 
@@ -395,7 +398,7 @@ if "`method'" == "magnitude" {
             local plotDescription = "`plotDescription'" + " " + "(line beta_`beta' varNum, lcolor(gs9))"
       }
 
-      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) ylabel(, nogrid) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = -0.0001 {&sigma}" 53 "{&beta}  = -0.0025 {&sigma}" 54 "{&beta}  = -0.005 {&sigma}" 55 "{&beta}  = -0.01 {&sigma}") pos(6) rows(1) size(medsmall))
+      graph tw `plotDescription' (line beta_1 varNum, lcolor(red) lwidth(0.5)) (line beta_25 varNum, lcolor(blue) lwidth(0.5)) (line beta_50 varNum, lcolor(green) lwidth(0.5)) (line beta_100 varNum, lcolor(purple) lwidth(0.5)), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) ylabel(, nogrid) xtitle("") yline(0, lpattern(dash)) legend(order(52 "{&beta} = -0.0001 {&sigma}" 53 "{&beta}  = -0.0025 {&sigma}" 54 "{&beta}  = -0.005 {&sigma}" 55 "{&beta}  = -0.01 {&sigma}") pos(6) rows(1) size(medsmall) region(lcolor(none))) graphregion(color(white))
       graph export "${simulations}sim2/sim2_linneg1_`source'_`method'_F.pdf", replace
 }
 
@@ -429,7 +432,7 @@ if `task' > 5 {
 	bysort fips: ereplace alphaCoefficient = mean(alphaCoefficient)
 		
 	* plot slope of outcome against baseline temperature
-	tw (scatter alphaCoefficient baselinePeriodTemp if tag == 1, color(navy%30)) (lfit alphaCoefficient baselinePeriodTemp if tag == 1,lwidth(thick)), legend(off) ytitle("County specific trend") xtitle("Baseline temperature") xlabel(, nogrid)ylabel(, nogrid)
+	tw (scatter alphaCoefficient baselinePeriodTemp if tag == 1, color(navy%30)) (lfit alphaCoefficient baselinePeriodTemp if tag == 1,lwidth(thick)), legend(off) ytitle("County specific trend") xtitle("Baseline temperature") xlabel(, nogrid)ylabel(, nogrid) graphregion(color(white))
 	graph export "${simulations}sim3/sim3_`outcome'Trend_F.pdf", replace
 			
 	drop alphaCoefficient
@@ -560,7 +563,7 @@ preserve
 	sort variable
 
 	* plot results by themselves 
-	graph tw (scatter coefficient variable, color("31 88 137")) (rcap p25 p975 variable, color("31 88 137")), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) xtitle("") legend(off) yline(0, lpattern(dash) lcolor(red)) ylabel(, nogrid)
+	graph tw (scatter coefficient variable, color("31 88 137")) (rcap p25 p975 variable, color("31 88 137")), xlabel(1 "<10" 2 "10-20" 3 "20-30" 4 "30-40" 5 "40-50" 6 "50-60" 7 "60-70" 8 "70-80" 9 "80-90" 10 ">90", labsize(small) nogrid) xtitle("") legend(off) yline(0, lpattern(dash) lcolor(red)) ylabel(, nogrid) graphregion(color(white))
 	graph export "${simulations}sim3/sim3_era5_`outcome'_naive.pdf", replace
 
 	drop variable coefficient p25 p975 

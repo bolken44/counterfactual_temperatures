@@ -296,10 +296,10 @@ program define cftemp_plot
       } */
 
       if `version_num' == 2 {
-            graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")) (scatter coef2 variable2, color("155 52 58")) (rcap lb2 ub2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) `legendhet') `graph'
+            graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")) (scatter coef2 variable2, color("155 52 58")) (rcap lb2 ub2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white))
       }
       if `version_num' == 1 {
-            graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'") position(6) rows(1) `legendhet') `graph'
+            graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white))
       }
 
       restore

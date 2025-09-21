@@ -162,7 +162,7 @@ twoway (scatter diff_real_over_${ub_str}  baselineTemp if decade == 197, color(m
 	(scatter boston_real_under_${lb_str} boston_temp if decade == 197, mcolor(navy) mlcolor(black) msize(large) mlabel(boston_lab) mlabposition(6) mlabcolor(black))  ///
 	(scatter phoenix_real_over_${ub_str} phoenix_temp if decade == 197, mcolor(maroon) mlcolor(black) msize(large) mlabel(phoenix_lab) mlabposition(12) mlabcolor(black)) ///
 	(scatter phoenix_real_under_${lb_str} phoenix_temp if decade == 197, mcolor(navy) mlcolor(black) msize(large) mlabel(phoenix_lab) mlabposition(6) mlabcolor(black)) ///
-	, xtitle("Baseline temperature (1970s)") ytitle("Change in days (2010s - 1970s)") legend(order(3 "Days over 90°F" 4 "Days under 10°F") pos(6) row(1)) yline(0) xlabel(, nogrid) ylabel(, nogrid)
+	, xtitle("Baseline temperature (1970s)") ytitle("Change in days (2010s - 1970s)") legend(order(3 "Days over 90°F" 4 "Days under 10°F") pos(6) row(1) region(lcolor(none))) yline(0) xlabel(, nogrid) ylabel(, nogrid) graphregion(color(white))
 	graph export "${figures}scatter/diff_Under${lb_str}_Over${ub_str}_F.pdf", replace
 
 restore
@@ -219,15 +219,15 @@ local slopeOver${ub_str}Group1: di %7.4f _b[baselinePeriodTemp]
 * under 10
 twoway (scatter alphareal_under_${lb_str}Group0 baselinePeriodTemp if tag == 1, color(%40) mcolor("31 88 137")) (lfit alphareal_under_${lb_str}Group0 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)) ///
       (scatter alphareal_under_${lb_str}Group1 baselinePeriodTemp if tag == 1, color(%40) mcolor("155 52 58")) (lfit alphareal_under_${lb_str}Group1 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)), ///
-      legend(order(1 "Below median" 3 "Above median") pos(6) row(1)) ytitle("County specific trend") xtitle("Baseline temperature") xline(`medianPreTemp', lpattern(dash)) ///
-      text(-.38 40 "Var =`varUnder${lb_str}Group0', Slope =`slopeUnder${lb_str}Group0'") text(-.38 67.5 "Var =`varUnder${lb_str}Group1', Slope =`slopeUnder${lb_str}Group1'")  xlabel(, nogrid) ylabel(, nogrid)
+      legend(order(1 "Below median" 3 "Above median") pos(6) row(1) region(lcolor(none))) ytitle("County specific trend") xtitle("Baseline temperature") xline(`medianPreTemp', lpattern(dash)) ///
+      text(-.38 40 "Var =`varUnder${lb_str}Group0', Slope =`slopeUnder${lb_str}Group0'") text(-.38 67.5 "Var =`varUnder${lb_str}Group1', Slope =`slopeUnder${lb_str}Group1'")  xlabel(, nogrid) ylabel(, nogrid) graphregion(color(white))
       *text(-.28 40 "Var =`varUnder${lb_str}Group0', Slope =`slopeUnder${lb_str}Group0'") text(-.28 67.5 "Var =`varUnder${lb_str}Group1', Slope =`slopeUnder${lb_str}Group1'")
 graph export "${figures}scatter/adaptation_under_${lb_str}_Trend_F_aboveBelowMedian.pdf", replace
 
 * over 90
 twoway (scatter alphareal_over_${ub_str}Group0 baselinePeriodTemp if tag == 1, color(%40) mcolor("31 88 137")) (lfit alphareal_over_${ub_str}Group0 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)) ///
       (scatter alphareal_over_${ub_str}Group1 baselinePeriodTemp if tag == 1, color(%40) mcolor("155 52 58")) (lfit alphareal_over_${ub_str}Group1 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)), ///
-      legend(order(1 "Below median" 3 "Above median") pos(6) row(1)) ytitle("County specific trend") xtitle("Baseline temperature") xline(`medianPreTemp', lpattern(dash)) ///
-      text(.9 40 "Var =`varOver${ub_str}Group0', Slope =`slopeOver${ub_str}Group0'") text(.9 67.5 "Var =`varOver${ub_str}Group1', Slope =`slopeOver${ub_str}Group1'")  xlabel(, nogrid) ylabel(, nogrid)
+      legend(order(1 "Below median" 3 "Above median") pos(6) row(1) region(lcolor(none))) ytitle("County specific trend") xtitle("Baseline temperature") xline(`medianPreTemp', lpattern(dash)) ///
+      text(.9 40 "Var =`varOver${ub_str}Group0', Slope =`slopeOver${ub_str}Group0'") text(.9 67.5 "Var =`varOver${ub_str}Group1', Slope =`slopeOver${ub_str}Group1'")  xlabel(, nogrid) ylabel(, nogrid) graphregion(color(white))
       *text(-.45 40 "Var =`varOver${ub_str}Group0', Slope =`slopeOver${ub_str}Group0'") text(-.45 67.5 "Var =`varOver${ub_str}Group1', Slope =`slopeOver${ub_str}Group1'")
 graph export "${figures}scatter/adaptation_over_${ub_str}_Trend_F_aboveBelowMedian.pdf", replace
