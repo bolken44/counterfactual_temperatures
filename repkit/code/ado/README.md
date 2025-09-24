@@ -1,6 +1,8 @@
 # Stata command `cftemp`
 
-The `cftemp` program takes a panel dataset with some fine temporal variation in temperature (say, place-day level) and transforms it to an aggregated panel dataset (say, place-year level) with variables holding the *realized* and *expected* number of days that fall in each of a user-specified set of temperature bins.
+version: 1.0 (September 24, 2025)
+
+The `cftemp` program takes a panel dataset with some fine temporal variation in temperature (say, place-day level) and transforms it to an aggregated panel dataset (say, place-year level) with variables holding the *realized* and *expected* number of days that fall into each temperature bin, the bounds and interval of which are specified by the user.
 
 Under the default syntax, the counterfactual (expected number of days) is calculated using yearly trends in temperature for each place-month WITH empirical Bayesian shrinkage toward the mean for all geographic units.
 
@@ -58,12 +60,12 @@ cftemp tempvar geovar timevar1 timevar2, [binsize(#) lb(#) ub(#) time(var) trend
 
 ### Parallelization settings
 - `parallel(#)` - Specifies the number of clusters for parallel processing. If omitted, no parallelization is used. The program will run parallelized by the geographic unit, with the computations distributed across `(#)` CPU cores. This uses the user-written command `parallel`.
-- 
-### Miscellaneous
-- `keep(string)` - Specifies variables that are already in the dataset and should be kept in the return dataset. This is particularly useful for keeping precomputed variables at the aggregation level. The most obvious use case is to precompute the average temperature at the return dataset level (say, county-year level) and keep that variable using `keep(avg_temp)`.
-- `realonly` - Returns a dataset with only the realized temperature bins, not the expected counts. This is useful when you only need the observed temperature distribution and do not require the counterfactual analysis.
 
-## Description
+### Miscellaneous
+- `keep(string)` - Specifies variables that are already in the dataset and should be kept in the return dataset. The most obvious use case is to precompute the average temperature at the return dataset level (say, county-year level) and keep that variable using `keep(avg_temp)`.
+- `realonly` - Returns a dataset with only the realized temperature bins, not the expected counts. This is useful when you only need the observed temperature distribution and do not require a counterfactual temperature distribution.
+
+## Output dataset
 
 The variables holding realized frequencies will be named as:
 - `real_under_<lower bound>` and `real_over_<upper bound>` for the edge bins
