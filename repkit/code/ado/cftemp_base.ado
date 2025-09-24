@@ -1,8 +1,13 @@
 /*******************************************************************************
+STATA COMMAND cftemp (version 1.0)
+
 AUTHOR: Harufumi Nakazawa
 DATE: March 2025
 LAST UPDATE: September 24, 2025
 ACTION: Generate counterfactual temperatures
+
+This file and cftemp.ado should be stored in the same folder, and the folder path should be stored in a global `path`:
+global path "<folder path>"
 
 Requirements
 - Dataset should have a temperature variable at the level of a geographic unit (e.g., fips) and the finest time level (e.g., day)
