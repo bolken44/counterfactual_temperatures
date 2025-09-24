@@ -41,12 +41,12 @@ to your code before you use this command. This sets up both ado files to be used
 Dataset should be at the level of the geographic unit and the finest temporal unit with temperature data (e.g., county-day level).
 
 ```
-cftemp tempvar geovar time1 time2, [binsize(#) lb(#) ub(#) time(var) trend(string) bayes(string) parallel(#)]
+cftemp temp geo time1 time2, [binsize(#) lb(#) ub(#) time(var) trend(string) bayes(string) parallel(#)]
 ```
 
 **Required arguments:**
-- `tempvar` - The variable holding temperature data.
-- `geovar` - The variable uniquely indexing the geographic unit.
+- `temp` - The variable holding temperature data.
+- `geo` - The variable uniquely indexing the geographic unit.
 - `time1` - The time variable for which temperature distributions are calculated separately (e.g., month)
 - `time2` - The time variable across which temperature is assumed to follow a linear trend (e.g., year)
 
@@ -64,7 +64,7 @@ cftemp tempvar geovar time1 time2, [binsize(#) lb(#) ub(#) time(var) trend(strin
 - `bayes(string)` - All parameters of the counterfactual temperature model are first estimated for each geographic unit separately. The `bayes()` option allows for empirical Bayes shrinkage of these parameters. The shrinkage is performed using inverse-variance weighting.
   - `bayes(mean, all)` - Shrinks parameters toward the average of all geographic units. This is the default.
   - `bayes(none)` - Turns off empirical shrinkage.
-  - `bayes(mean, geovar)` - Shrinks parameters toward the average of that parameter within the specified geographic variable (presumed to be a larger geographic unit, e.g., states if `geovar` is county).
+  - `bayes(mean, geovar)` - Shrinks parameters toward the average of that parameter within the specified geographic variable (presumed to be a larger geographic unit than the dataset, e.g., `geovar` can be states if `geo` is county).
   - `bayes(zero)` - Shrinks parameters toward zero.
 
 - `trend(string)` - Specifies the counterfactual temperature model. Default is `trend(time2)`.
