@@ -115,7 +115,7 @@ program define cftemp_base
 			
 			forval i = 1(2)`trend_param' {
 			    local expr "`expr' T`i' +"
-			    local expr_trend "`expr' T`i'_trend +"
+			    local expr_trend "`expr_trend' T`i'_trend +"
 			}
 			local expr = substr("`expr'", 1, length("`expr'")-2) // remove the trailing plus sign
 			local expr_trend = substr("`expr_trend'", 1, length("`expr_trend'")-2) // remove the trailing plus sign
