@@ -22,6 +22,19 @@ which would estimate the effects of each temperature bin on the outcome variable
 
 The theory and empirical applications are developed in our paper ["With or Without U? Binning Bias and the Causal Effects of Temperature Shocks"](https://www.dropbox.com/scl/fi/1ya6zzb76g0eayicexr2g/U_Shapes_Paper.pdf?rlkey=rkwfyw4m8iecn1uasrnasaz1m&e=7&st=b5cwqvs7&dl=0) by Benjamin F. Jones, Jacob Moscona, Benjamin A. Olken, and Cristine von Dessauer.
 
+## Installation
+
+There are two files: `cftemp_base.ado` and `cftemp.ado`. The substantive file is `cftemp_base.ado`, while `cftemp.ado` is simply a wrapper for the former to allow for parallelization. The two should be stored in the same folder, and that folder path should be stored in a global `ado`:
+```
+  global ado "<folder path>"
+```
+
+Then add
+```
+  run "${ado}cftemp.ado"
+```
+to your code before you use this command. This sets up both ado files to be used in your code. The first step of defining the global `ado` is necessary because the code `${ado}cftemp_base.ado` is already inside `cftemp.ado`. 
+  
 
 ## Syntax
 
