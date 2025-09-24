@@ -1,21 +1,23 @@
 /*******************************************************************************
 AUTHOR: Harufumi Nakazawa
 DATE: March 2025
+LAST UPDATE: September 24, 2025
 ACTION: Generate counterfactual temperatures
 
 Requirements
 - Dataset should have a temperature variable at the level of a geographic unit (e.g., fips) and the finest time level (e.g., day)
 - Dataset should have a variable indexing the first and second aggregated time level (e.g., month and year)
 
+Run `help cftemp` or see our README file for more details.
+
 *******************************************************************************/
 
 program define cftemp_base
-    /* version 18.0 */
 
     * Catch the syntax.
     syntax varlist(min=4 max=4) [, binsize(real 5) lb(real -10) ub(real 35) time(varlist) keep(varlist) trend(string) bayes(string) realonly]
     
-	/* quietly { */
+	quietly {
 		
 		** Parse variables from syntax. Variables must be in this order
 		local temp  : word 1 of `varlist'
@@ -40,7 +42,7 @@ program define cftemp_base
 		** Special Options
 		
 		* Empirical Bayes
-		/* By default, all parameters of the counterfactual temperature model are estimated
+		/* All parameters of the counterfactual temperature model are first estimated
 		for each geographic unit `geo' separately. bayes(mean, [geographic variable]) specifies
 		that these parameters be shrunk toward the average of that parameter for `geo' units 
 		within the specified [geographic variable], presumed to be a larger geographic unit than `geo'.
@@ -92,7 +94,7 @@ program define cftemp_base
 			bysort year: egen doymax = max(doy)
 			gen x = 2 * (doy - 1) / (doymax - 1) - 1
  
-			* Generate Chebyshev polynomials of degree 0 to 4
+			* Generate Chebyshev polynomials of degree 0 to `trend_param'
 			gen T0 = 1
 			gen T1 = x
 
@@ -106,8 +108,20 @@ program define cftemp_base
 				gen T`n'_trend = T`n' * event_`time2'
 				local regressor = "`regressor' T`n' T`n'_trend" //
 			}
-			constraint 1 T1 + T3 = 0
-			constraint 2 T1_trend + T3_trend = 0
+			
+			* Generate the constraint (odd-order polynomials should sum to 0)
+			local expr ""
+			local expr_trend ""
+			
+			forval i = 1(2)`trend_param' {
+			    local expr "`expr' T`i' +"
+			    local expr_trend "`expr' T`i'_trend +"
+			}
+			local expr = substr("`expr'", 1, length("`expr'")-2) // remove the trailing plus sign
+			local expr_trend = substr("`expr_trend'", 1, length("`expr_trend'")-2) // remove the trailing plus sign
+			
+			constraint 1 `expr' = 0
+			constraint 2 `expr_trend' = 0
 
 			local trendvar = "event_`time2'"
 			local mintrendvar = "mintime2"
@@ -263,7 +277,7 @@ program define cftemp_base
 			* Loop through the trend variable and move the aggregate distribution one slope at a time
 			/* e.g., if the trend variable is time2, for each `geo' `agg_time' (e.g., fip-month), 
 			all daily observations of detrended temperatures are aggregated to make one big empirical 
-			distribution of temperatures in that month for that location. Count the number of observations 
+			distribution of temperatures in that month for that location. Then we count the number of observations 
 			that fall into each bin - it has not been scaled yet to add up correctly to the number
 			of days in the level to return the dataset (year/month). At the end of the loop, add
 			the slope back to detrendedTemp for all observations ONCE to shift the aggregate distribution
@@ -338,7 +352,7 @@ program define cftemp_base
 		duplicates drop
 		order `geo_orig' `time2' `agg_time', first
 		sort `geo_orig' `time2' `agg_time'
-	/* } */
+	}
 	
 	*******************************************************************************/
 	* Display notification for completion
