@@ -28,14 +28,14 @@ The theory and empirical applications are developed in our paper ["With or Witho
 Dataset should be at the level of the geographic unit and the finest temporal unit with temperature data (e.g., county-day level).
 
 ```
-cftemp tempvar geovar timevar1 timevar2, [binsize(#) lb(#) ub(#) time(var) trend(string) bayes(string) parallel(#)]
+cftemp tempvar geovar time1 time2, [binsize(#) lb(#) ub(#) time(var) trend(string) bayes(string) parallel(#)]
 ```
 
 **Required arguments:**
 - `tempvar` - The variable holding temperature data.
 - `geovar` - The variable uniquely indexing the geographic unit.
-- `timevar1` - The time variable for which temperature distributions are calculated separately (e.g., month)
-- `timevar2` - The time variable across which temperature is assumed to follow a linear trend (e.g., year)
+- `time1` - The time variable for which temperature distributions are calculated separately (e.g., month)
+- `time2` - The time variable across which temperature is assumed to follow a linear trend (e.g., year)
 
 ## Options
 
@@ -45,7 +45,7 @@ cftemp tempvar geovar timevar1 timevar2, [binsize(#) lb(#) ub(#) time(var) trend
 - `ub(#)` - The upper bound of the temperature range. Default is 35.
 
 ### Temporal Aggregation settings
-- `time(var)` - The variable used for aggregation. Default is `year`.
+- `time(var)` - The variable used for aggregation. Default is `year`. Note that there must already exist a variable with that name in the dataset.
 
 ### Functional form settings
 - `bayes(string)` - All parameters of the counterfactual temperature model are first estimated for each geographic unit separately. The `bayes()` option allows for empirical Bayes shrinkage of these parameters. The shrinkage is performed using inverse-variance weighting.
