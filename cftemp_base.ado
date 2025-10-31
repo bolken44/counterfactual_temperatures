@@ -85,8 +85,8 @@ program define cftemp_base
 			local trend_param = substr("`trend'", strpos("`trend'", ",") + 1, .)
 		}
 		
-		* Linear trend in year (should be specified as trend(year))
-		if "`trend'" == "`time2'" {
+		* Linear trend in year  - this is the default if trend() is not specified
+		if "`trend'" == "`time2'" | "`trend'" == "" {
 			local trendvar = "event_`time2'"
 			local mintrendvar = "mintime2"
 		}

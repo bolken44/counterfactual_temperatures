@@ -47,6 +47,6 @@ program define cftemp
 	
 	* If the parallel option is not specified, simply run all geographic units
 	else {
-		cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') `realonly' trend(`trend') bayes(`bayes')
+		cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') `realonly' trend(`trend') keep(`keep') bayes(`bayes')
 	}
 end
