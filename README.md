@@ -18,7 +18,9 @@ After applying this command, the dataset is ready to be used for regression anal
 ```
 reghdfe outcome real_under_n10-real_15-20 real_25-30-real_over_35 exp_*, absorb(fips year) cluster(fips)
 ```
-which would estimate the effects of each temperature bin on the outcome variable relative to the 20-25 degree bin.
+which would estimate the effects of each temperature bin on the outcome variable relative to the 20-25 degree bin controlling for the expected number of days that fall in each county-year-temperature bin.
+
+**Note:** this is a computationally intensive command, as it is essentially running (# of geo units) x (# of time1 units) regressions and looping across all time2 units to create the counterfactual bins. We recommend using compute resources (e.g., server) to parallelize using the 'parallel' option or otherwise to let it run without interruption.
 
 The theory and empirical applications are developed in our paper ["With or Without U? Binning Bias and the Causal Effects of Temperature Shocks"](https://www.dropbox.com/scl/fi/1ya6zzb76g0eayicexr2g/U_Shapes_Paper.pdf?rlkey=rkwfyw4m8iecn1uasrnasaz1m&e=7&st=b5cwqvs7&dl=0) by Benjamin F. Jones, Jacob Moscona, Benjamin A. Olken, and Cristine von Dessauer.
 
