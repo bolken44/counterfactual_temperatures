@@ -5,7 +5,7 @@ ACTION: Creates scatter plots
 *******************************************************************************
 Set Up
 *********************************/
-args data repkit task
+args data repkit
 global data "`data'"
 global repkit "`repkit'"
 
@@ -29,6 +29,12 @@ local minyear_ghcn = 1968
 local minyear_era5_F = 1970
 
 local omit = 55 // for polynomials
+
+* Theoretical Bias values (hardcoded)
+local biasUnder${lb_str}Group0 = 0.72  // Specify bias for below median, under 10
+local biasUnder${lb_str}Group1 = 28.6  // Specify bias for above median, under 10
+local biasOver${ub_str}Group0 = 6.42   // Specify bias for below median, over 90
+local biasOver${ub_str}Group1 = 1.60   // Specify bias for above median, over 90
 
 global source = "`source'"
 global method = "`method'"
@@ -216,18 +222,26 @@ local slopeOver${ub_str}Group0: di %7.4f _b[baselinePeriodTemp]
 reg alphareal_over_${ub_str}Group1 baselinePeriodTemp if aboveMedian == 1
 local slopeOver${ub_str}Group1: di %7.4f _b[baselinePeriodTemp]
 
+* Format bias values for display (ensures leading zeros)
+local biasUnder${lb_str}Group0_fmt: di %5.2f `biasUnder${lb_str}Group0'
+local biasUnder${lb_str}Group1_fmt: di %5.2f `biasUnder${lb_str}Group1'
+local biasOver${ub_str}Group0_fmt: di %5.2f `biasOver${ub_str}Group0'
+local biasOver${ub_str}Group1_fmt: di %5.2f `biasOver${ub_str}Group1'
+
 * under 10
-twoway (scatter alphareal_under_${lb_str}Group0 baselinePeriodTemp if tag == 1, color(%40) mcolor("31 88 137")) (lfit alphareal_under_${lb_str}Group0 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)) ///
-      (scatter alphareal_under_${lb_str}Group1 baselinePeriodTemp if tag == 1, color(%40) mcolor("155 52 58")) (lfit alphareal_under_${lb_str}Group1 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)), ///
+twoway (scatter alphareal_under_${lb_str}Group0 baselinePeriodTemp if tag == 1, color(%20) mcolor("31 88 137")) (lfit alphareal_under_${lb_str}Group0 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)) ///
+      (scatter alphareal_under_${lb_str}Group1 baselinePeriodTemp if tag == 1, color(%20) mcolor("155 52 58")) (lfit alphareal_under_${lb_str}Group1 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)), ///
       legend(order(1 "Below median" 3 "Above median") pos(6) row(1) region(lcolor(none))) ytitle("County specific trend") xtitle("Baseline temperature") xline(`medianPreTemp', lpattern(dash)) ///
-      text(-.38 40 "Var =`varUnder${lb_str}Group0', Slope =`slopeUnder${lb_str}Group0'") text(-.38 67.5 "Var =`varUnder${lb_str}Group1', Slope =`slopeUnder${lb_str}Group1'")  xlabel(, nogrid) ylabel(, nogrid) graphregion(color(white))
+      text(-.30 40 "Var =`varUnder${lb_str}Group0', Slope =`slopeUnder${lb_str}Group0'") text(-.30 67.5 "Var =`varUnder${lb_str}Group1', Slope =`slopeUnder${lb_str}Group1'") ///
+      text(-.33 40 "Theoretical Bias: `biasUnder${lb_str}Group0_fmt'") text(-.33 67.5 "Theoretical Bias: `biasUnder${lb_str}Group1_fmt'") xlabel(, nogrid) ylabel(, nogrid) graphregion(color(white))
       *text(-.28 40 "Var =`varUnder${lb_str}Group0', Slope =`slopeUnder${lb_str}Group0'") text(-.28 67.5 "Var =`varUnder${lb_str}Group1', Slope =`slopeUnder${lb_str}Group1'")
 graph export "${figures}scatter/adaptation_under_${lb_str}_Trend_F_aboveBelowMedian.pdf", replace
 
 * over 90
-twoway (scatter alphareal_over_${ub_str}Group0 baselinePeriodTemp if tag == 1, color(%40) mcolor("31 88 137")) (lfit alphareal_over_${ub_str}Group0 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)) ///
-      (scatter alphareal_over_${ub_str}Group1 baselinePeriodTemp if tag == 1, color(%40) mcolor("155 52 58")) (lfit alphareal_over_${ub_str}Group1 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)), ///
+twoway (scatter alphareal_over_${ub_str}Group0 baselinePeriodTemp if tag == 1, color(%20) mcolor("31 88 137")) (lfit alphareal_over_${ub_str}Group0 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)) ///
+      (scatter alphareal_over_${ub_str}Group1 baselinePeriodTemp if tag == 1, color(%20) mcolor("155 52 58")) (lfit alphareal_over_${ub_str}Group1 baselinePeriodTemp if tag == 1, lwidth(thick) lcolor(dkorange)), ///
       legend(order(1 "Below median" 3 "Above median") pos(6) row(1) region(lcolor(none))) ytitle("County specific trend") xtitle("Baseline temperature") xline(`medianPreTemp', lpattern(dash)) ///
-      text(.9 40 "Var =`varOver${ub_str}Group0', Slope =`slopeOver${ub_str}Group0'") text(.9 67.5 "Var =`varOver${ub_str}Group1', Slope =`slopeOver${ub_str}Group1'")  xlabel(, nogrid) ylabel(, nogrid) graphregion(color(white))
+      text(.9 40 "Var =`varOver${ub_str}Group0', Slope =`slopeOver${ub_str}Group0'") text(.9 67.5 "Var =`varOver${ub_str}Group1', Slope =`slopeOver${ub_str}Group1'") ///
+      text(.83 40 "Theoretical Bias: `biasOver${ub_str}Group0_fmt'") text(.83 67.5 "Theoretical Bias: `biasOver${ub_str}Group1_fmt'") xlabel(, nogrid) ylabel(, nogrid) graphregion(color(white))
       *text(-.45 40 "Var =`varOver${ub_str}Group0', Slope =`slopeOver${ub_str}Group0'") text(-.45 67.5 "Var =`varOver${ub_str}Group1', Slope =`slopeOver${ub_str}Group1'")
 graph export "${figures}scatter/adaptation_over_${ub_str}_Trend_F_aboveBelowMedian.pdf", replace

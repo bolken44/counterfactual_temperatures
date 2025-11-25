@@ -11,7 +11,7 @@
 ## Running the script
 This code is meant to be run on a high-computing cluster (HPC). On the terminal, run
 ```
-sbatch --partition=sched_mit_econ --mail-user=hnakazawa@povertyactionlab.org --output=../../log/MASTER_%A.txt code/MASTER.sh
+sbatch --partition=sched_mit_econ --mail-user=hnakazawa@povertyactionlab.org --output=log/MASTER_%A.txt code/MASTER.sh
 ```
 setting the following arguments as appropriate.
 - partition: name of the partition that this code runs on the high-performance cluster (HPC)

@@ -15,5 +15,6 @@ STATATMP="/nobackup1/$USER/tmp"
 export STATATMP
 
 mkdir -p ../../log/2_2_scatter_plots/
+echo "Running task ID: $SLURM_JOB_ID"
 
 stata-mp -b do 2_2_scatter_plots.do ${data} ${repkit}
