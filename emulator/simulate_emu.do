@@ -5,30 +5,43 @@ ACTION: Runs all simulations.
 *******************************************************************************
 Set Up
 *********************************/
-args data repkit task
+args data home task
 global data "`data'"
-global repkit "`repkit'"
+global home "`home'"
 global task `task'
 
-do "${repkit}code/do/0_setup.do"
-/* global pool "/orcd/pool/003/hnaka24/climate/"
-global weather "${pool}processed/" */
+global emulator "${data}emulator/"
+global simulations "${home}output/emulator/"
+global temp "${data}emulator/temp/"
+mkdir "${temp}"
 
-log using "${log}3_1_simulations/3_1_simulations_`task'.txt", text replace
+log using "${home}log/emulator/simulate_emu_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
-display "`c(tmpdir)'"
+/*********************************
+Run ado files
+*********************************/
+global ado "${home}repkit/code/ado/"
+
+adopath + "${ado}"
+run "${ado}cftemp.ado"
+run "${ado}cftemp_sim.ado"
+run "${ado}cftemp_plot.ado"
+
 /*********************************
 Parallelize temperature data source and control methods
 *********************************/
 * Main
 local sources  "era5"
-local methods  "naive stateyearFE lag3 trends 5year year bayes chebyshev adapt"
+local methods  "naive stateyearFE lag3 trends 5year" //  year bayes chebyshev adapt
 local binforms "allbins extreme"
-local binsizes "10"
+local binsizes "5"
+
+local combo11 "era5 emu allbins 5"
+local combo12 "era5 emu extreme 5"
 
 * Robustness: alternative binsizes
-local combo19 "era5 naive allbins 5"
+/* local combo19 "era5 naive allbins 5"
 local combo20 "era5 naive allbins 20"
 
 * Robustness: alternative sources
@@ -39,7 +52,7 @@ local combo23 "era5_C adapt allbins 10"
 * Simulation 1 with Counterfactual Control
 local combo24 "era5 sim allbins 10"
 local combo25 "era5 sim allbins 10"
-local combo26 "era5 sim allbins 10"
+local combo26 "era5 sim allbins 10" */
 
 * Count items in each dimension for existing permutations
 local n_sources  : word count `sources'
@@ -79,49 +92,16 @@ di "Slurm task `task': source=`source', method=`method', binform=`binform', bins
 /*********************************
 Add average annual temperature -- should be deleted later
 *********************************/
-* GHCN yearly averages
-/* if "`source'" == "ghcn"{
-      use "${weather}ghcn_UScountylevel_1968_2016.dta", clear
-      drop if year > 2019 | year < 1970
+/* use "${emulator}avg_temp_day_cftemp.dta", clear
 
-      gen tmean = (TMAX + TMIN) / 2
-      bysort fips year: egen avg_yearly_temp = mean(tmean)
-      keep fips year avg_yearly_temp
-      duplicates drop
-}
+keep year fips avg_yearly_temp
+keep if mod(year, 10) == 0
 
-* PRISM yearly averages (1950-2019)
-if strpos("`source'", "prism") {
-      use "${pool}data/appended.dta", clear
-      if "`source'" == "prism_1970" {
-            drop if year > 2019 | year < 1970
-      }
-      
-      replace tMax = (tMax * 9 / 5) + 32
-      bysort fips year: egen avg_yearly_temp = mean(tMax)
-      keep fips year avg_yearly_temp
-      duplicates drop
-}
-
-* ERA 5 yearly averages
-if strpos("`source'", "era5") > 0 {
-      /* use "${raw}countyLevel_USPanel_1970_2019.dta", clear
-            //this uses ERA Land, not ERA 5
-
-      drop if year > 2019 | year < 1970
-      keep fips year avg_yearly_temp //avg_yearly_temp uses whole day avg not daytime avg
-      replace avg_yearly_temp = (avg_yearly_temp * 9 / 5) + 32
-      duplicates drop */
-
-      use "${weather}countyannual_US_1970_2019.dta", clear //this comes from "${path}/DTA_US/countyLevel_US_1970_2019.dta", which is day level data converted to F then collapsed to annual mean
-      if "`source'" == "era5_C" {
-            replace avg_yearly_temp = (avg_yearly_temp - 32) * (5/9)
-      }
-} 
+keep if inrange(year, 1970, 2019)
 
 sum avg_yearly_temp
-tempfile `source'_avgtemp
-save ``source'_avgtemp', replace*/
+tempfile era5_avgtemp
+save `era5_avgtemp', replace */
 
 /*********************************
 Locals for table
@@ -164,7 +144,7 @@ local row = "`row' \midrule \multirow{8}{*}{`title_`source''}"
 /*********************************
 Locals
 *********************************/
-local base_era5 = 1980
+local base_era5 = 1960 // changed for emulator experiment
 local base_era5_C = 1980
 local base_prism_1950 = 1960
 local base_prism_1970 = 1980
@@ -175,9 +155,14 @@ local graph_0 "yscale(range(-4 4)) ylabel(-4(2)4)"
 local graph_1 "yscale(range(-2 6)) ylabel(-2(2)6)"
 
 * Binning
-if "`binsize'" == "5" local omit = 10
-if "`binsize'" == "10" local omit = 6
-if "`binsize'" == "20" local omit = 4
+/* if "`binsize'" == "5" local omit = 10 */
+/* if "`binsize'" == "10" local omit = 6
+if "`binsize'" == "20" local omit = 4 */
+
+global lb = -10
+global ub = 35
+local binsize = 5
+local omit = 6
 
 * Compare option
 local compare1 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "naive trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "naive stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "naive lags, 3", cond(strpos("`method'", "5year") > 0, "naive 5year, county5year year", "naive sim")))))
@@ -187,15 +172,15 @@ local compare2 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`met
 /*********************************
 Main script
 *********************************/
-      * Counterfactual temperature controls
+      /* * Counterfactual temperature controls
       if "`method'" == "bayes" | "`method'" == "chebyshev" { // "`method'" == "year" |
-            use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear
-            /* use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear */
+            /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear */
+            use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear
       }
       * Reduced Form Methods
       else if "`source'" == "era5" & "`binsize'" == "10" {
-            use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear
-            /* use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear */
+            /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear */
+            use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
             /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_over100_naive.dta", clear */
       }
       * Alternative bin sizes
@@ -204,24 +189,26 @@ Main script
       }
       * Other data sources
       else {
-            /* if "`source'" == "ghcn" {
+            /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear */
+            if "`source'" == "ghcn" {
                   use "${weather}ghcn_UScounty_1968_2016_cftemp.dta", clear
             }
             else if "`source'" == "prism_1950" {
                   use "${weather}schlenker_UScounty_1950_2019_cftemp_F.dta", clear
-            } */
-            if "`source'" == "era5_C" {
-                  use "${temperature}`source'_UScounty_cftemp_C_bin`binsize'_naive.dta", clear
             }
-            else {
-                  use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear
+            else if "`source'" == "era5_C" {
+                  use "${weather}era5_UScounty_1970_2019_cftemp.dta", clear
             }
-      }
+      } */
 
+      use "${emulator}era5_counts_all.dta", clear
+
+      /* keep if inrange(year, 1970, 2019) */
       xtset fips year
+      cap drop _merge
 
       * Merge average temps
-      /* merge m:1 year fips using ``source'_avgtemp'
+      /* merge 1:1 year fips using `era5_avgtemp'
       keep if _merge == 3
       drop _merge */
 
@@ -266,7 +253,7 @@ Main script
 
             ********************************* Simulations with simulated temperature data (sim1)
             * Linear trends
-            if "`source'" == "era5" & "`method'" == "naive" & "`binsize'" == "10" {
+            /* if "`source'" == "era5" & "`method'" == "naive" & "`binsize'" == "10" {
                   foreach slope in 1 { //forval slope = -1(1)1
                         cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(none) fe(fips year) cluster(fips)
                   }
@@ -281,7 +268,7 @@ Main script
                   if `task' == 26 {
                         cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(naive sim) fe(fips year) cluster(fips) effect(50)
                   }
-            }
+            } */
             
             ********************************* Simulations with real temperature data (sim2)
             * Naive
@@ -327,7 +314,6 @@ Main script
             if strpos("`method'", "adapt") <= 0 {
                   * Quadratic trends
                   /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) extreme
-
                   * Cubic trends
                   cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) extreme */
             }

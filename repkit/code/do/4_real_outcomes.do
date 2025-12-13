@@ -10,8 +10,8 @@ global data "`data'"
 global repkit "`repkit'"
 
 do "${repkit}code/do/0_setup.do"
-global pool "/orcd/pool/003/hnaka24/climate/"
-global weather "${pool}processed/"
+/* global pool "/orcd/pool/003/hnaka24/climate/"
+global weather "${pool}processed/" */
 
 log using "${log}4_real_outcomes/4_real_outcomes.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
@@ -105,12 +105,12 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
       foreach method in trends 5year year bayes chebyshev {
 
             if "`method'" == "bayes" | "`method'" == "chebyshev" {
-                  /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear */
-                  use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear
+                  use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear
+                  /* use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear */
             }
             else {
-                  /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear */
-                  use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
+                  use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear
+                  /* use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear */
             }
 
             xtset fips year
@@ -218,12 +218,12 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
             ******************************* Crime (Ranson, 2014) ******************************
 
                   if "`method'" == "bayes" | "`method'" == "chebyshev" {
-                        /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear */
-                        use "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F_`method'.dta", clear
+                        use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear
+                        /* use "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F_`method'.dta", clear */
                   }
                   else {
-                        /* use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear */
-                        use "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F.dta", clear
+                        use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear
+                        /* use "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F.dta", clear */
                   }
             
                   * Merge outcome data

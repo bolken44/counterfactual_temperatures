@@ -12,8 +12,8 @@ global data "`data'"
 global repkit "`repkit'"
 
 do "${repkit}code/do/0_setup.do"
-global pool "/orcd/pool/003/hnaka24/climate/"
-global weather "${pool}processed/"
+/* global pool "/orcd/pool/003/hnaka24/climate/"
+global weather "${pool}processed/" */
 
 log using "${log}3_3_other_sim/3_3_other_sim_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
@@ -26,6 +26,7 @@ local combo2 "era5 decade"
 local combo3 "era5 kdd"
 local combo4 "era5 poly4"
 local combo5 "era5 magnitude"
+local combo6 "era5 average"
 
 local source = word("`combo`task''", 1)
 local method = word("`combo`task''", 2)
@@ -35,8 +36,8 @@ di "Slurm task `task': source=`source', method=`method'"
 
 * For sim 3, parallelize the outcome variable
 local outcomes "more65 violent nonViolent corn soy wheat" //allAges less1 1_44 45_64 more65
-if `task' > 5 {
-      local j = `task' - 5
+if `task' > 6 {
+      local j = `task' - 6
       local outcome = word("`outcomes'", `j')
       di "Outcome: `outcome'"
 }
@@ -86,7 +87,7 @@ if "`outcome'" == "more65" {
       keep if inrange(year,1970,2019) //68-
 }
 
-if `task' > 5 {
+if `task' > 6 {
       gen agno = year
       sum fips
       tempfile `outcome'ByFips
@@ -111,18 +112,18 @@ global source = "`source'"
 global method = "`method'"
 
 * average temperature (delete later)
-use "${weather}countyannual_US_1970_2019.dta", clear
+/* use "${weather}countyannual_US_1970_2019.dta", clear
 /* use "${weather}countyLevel_USPanel_1970_2019_v2.dta", clear  // this is what Cristine used originally
 replace avg_yearly_temp = (avg_yearly_temp * 9/5) + 32 */
 tempfile `source'_avgtemp
-save ``source'_avgtemp', replace
+save ``source'_avgtemp', replace */
 
 /*********************************
 Prepare Dataset
 *********************************/
-if "`method'" == "state" | "`method'" == "decade" | "`method'" == "magnitude" | `task' > 5 {
-      /* use "${temperature}`source'_UScounty_cftemp_F_bin10_year.dta", clear */
-      use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
+if "`method'" == "state" | "`method'" == "decade" | "`method'" == "magnitude" | "`method'" == "average" | `task' > 6 {
+      use "${temperature}`source'_UScounty_cftemp_F_bin10_year.dta", clear
+      /* use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear */
 }
 else if "`method'" == "poly4" | "`method'" == "kdd" {
       use "${temperature}`source'_UScounty_`method'_F.dta", clear
@@ -132,9 +133,9 @@ xtset fips year
 drop if year > 2019 | year < 1970
 
 * Merge average temps
-merge m:1 year fips using ``source'_avgtemp'
+/* merge m:1 year fips using ``source'_avgtemp'
 assert _merge == 3
-drop _merge
+drop _merge */
 
 * add state information
 merge m:1 fips using "${data}UScounty_state_crosswalk.dta"
@@ -258,6 +259,120 @@ if "`method'" == "kdd" {
             yline(0, lpattern(dash) lcolor(red)) ///
             ylabel(, angle(h) nogrid) legend(off) graphregion(color(white))
       graph export "${simulations}sim2/sim2_lin1_`source'_`method'_F.pdf", replace
+}
+
+/*********************************
+Average Temperature
+*********************************/
+if "`method'" == "average" {
+
+      * Scatter plot
+      levelsof fips, local(fips)
+
+      gen trendFigure = .
+
+      foreach f of local fips{
+            reg avg_yearly_temp year if fips == `f'
+            lincom year
+            replace trendFigure = `r(estimate)' if fips == `f'
+      }
+
+      egen tag = tag(fips)
+
+      tw (scatter trendFigure baselinePeriodTemp if tag == 1, color("31 88 137%20")) ///
+      (lfit trendFigure baselinePeriodTemp if tag == 1, lcolor(red)) ///
+      , legend(off) xlabel(, nogrid) ylabel(, angle(h) nogrid) ///
+      graphregion(color(white) lcolor(none)) ytitle("Trend") xtitle("Baseline temperature")
+      graph export "${figures}scatter/baseline_trend_`source'_F.pdf", replace
+
+      * Simulation - create separate variables for two regressions
+      gen coef1 = .
+      gen coef2 = .
+      gen pValue1 = .
+      gen pValue2 = .
+      
+      * Simulation 1: avg_yearly_temp only
+      forvalues l = 1/1000 {
+            * random variable with mean 0 and variance v^2
+            gen random_Y = 1 * year * baselinePeriodTemp + rnormal(0,`oneStdDevValue')
+
+            * regression 1
+            reghdfe random_Y avg_yearly_temp, absorb(fips year) cluster(fips)
+
+            * save coefficient estimates
+            lincom avg_yearly_temp
+            replace coef1 = `r(estimate)' if _n == `l'
+            replace pValue1 = `r(p)' if _n == `l'
+
+            drop random_Y
+      }
+      
+      * Simulation 2: avg_yearly_temp and avg_yearly_cftemp
+      forvalues l = 1/1000 {
+            * random variable with mean 0 and variance v^2
+            gen random_Y = 1 * year * baselinePeriodTemp + rnormal(0,`oneStdDevValue')
+
+            * regression 2
+            reghdfe random_Y avg_yearly_temp avg_yearly_cftemp, absorb(fips year) cluster(fips)
+
+            * save coefficient estimates
+            lincom avg_yearly_temp
+            replace coef2 = `r(estimate)' if _n == `l'
+            replace pValue2 = `r(p)' if _n == `l'
+
+            drop random_Y
+      }
+
+      * Calculate statistics for both
+      * For regression 1
+      _pctile coef1, nq(1000)
+      local meanCoef1: di %6.4g `r(r500)'
+      gen statisticallySignificant1 = (pValue1 < 0.05)
+      egen significantShare1 = total(statisticallySignificant1)
+      replace significantShare1 = (significantShare1 / 1000) * 100
+      local significantShare1: di %3.0f significantShare1
+      
+      * For regression 2
+      _pctile coef2, nq(1000)
+      local meanCoef2: di %6.4g `r(r500)'
+      gen statisticallySignificant2 = (pValue2 < 0.05)
+      egen significantShare2 = total(statisticallySignificant2)
+      replace significantShare2 = (significantShare2 / 1000) * 100
+      local significantShare2: di %3.0f significantShare2
+
+      * Calculate range that includes 0
+      sum coef1
+      local xmin1 = `r(min)'
+      local xmax1 = `r(max)'
+      sum coef2
+      local xmin2 = `r(min)'
+      local xmax2 = `r(max)'
+      local xmin = min(`xmin1', `xmin2')
+      local xmax = max(`xmax1', `xmax2')
+      if `xmin' > 0 {
+            local xmin = 0
+      }
+      if `xmax' < 0 {
+            local xmax = 0
+      }
+
+      * Density plot with both distributions
+      kdensity coef1, n(100) gen(x1 d1) nograph
+      kdensity coef2, n(100) gen(x2 d2) nograph
+      
+      twoway (line d1 x1, lcolor("31 88 137") lwidth(medium)) ///
+            (line d2 x2, lcolor("155 52 58") lwidth(medium)), ///
+            ytitle("Density") xtitle("Average Temperature Coefficient") ///
+            note("No correction (blue): Mean = `meanCoef1', Significant = `significantShare1'%" ///
+            "With counterfactual correction (red): Mean = `meanCoef2', Significant = `significantShare2'%", size(small)) ///
+            ylabel( , angle(h) nogrid) xlabel( , nogrid) xline(0, lpattern(dash) lcolor(red)) ///
+            xscale(range(`xmin' `xmax')) legend(order(1 "No correction" 2 "With counterfactual correction") ///
+            position(6) rows(1) region(lcolor(none))) graphregion(color(white) lcolor(none))
+      graph export "${simulations}sim2/sim2_lin1_`source'_`method'_F.pdf", replace
+      
+      drop x1 d1 x2 d2 statisticallySignificant1 statisticallySignificant2 significantShare1 significantShare2
+
+
 }
 
 /*********************************
@@ -406,7 +521,7 @@ if "`method'" == "magnitude" {
 /*********************************
 Simulation 3
 *********************************/
-if `task' > 5 {
+if `task' > 6 {
 
       merge 1:1 fips agno using ``outcome'ByFips'
       drop if _merge == 2

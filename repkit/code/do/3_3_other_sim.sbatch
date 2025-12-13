@@ -2,6 +2,7 @@
 #SBATCH --job-name=3_3_other_sim
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
+#SBATCH --array=1-12
 
 #SBATCH --mem=40GB
 #SBATCH --time=8:00:00

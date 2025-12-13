@@ -5,6 +5,9 @@
 #SBATCH --time=1:00:00
 
 ############ Replicators should change the following lines below ############
+# Run with
+# sbatch --partition=sched_mit_econ --mail-user=hnakazawa@povertyactionlab.org --output=/orcd/home/002/hnaka24/climate/repkit/log/MASTER_%A.txt /orcd/home/002/hnaka24/climate/repkit/code/MASTER.sh
+
 # Module names and locations for Stata, Python, Anaconda
 export stata_ver="stata/17/mp"
 export stata_path="/home/software/econ/modulefiles"
@@ -60,15 +63,15 @@ export mailuser=${SLURM_MAIL_USER:-user@example.com}
 
 ##################################
 # 1. Data Retrieval and Cleaning
-echo "Process raw data"
-process_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_1_processERA5.txt 1_1_processERA5.sbatch | awk '{print $4}')
-process_id2=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_2_processPRISM.txt 1_2_processPRISM.sbatch | awk '{print $4}')
-process_id3=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_3_processGHCN.txt 1_3_processGHCN.sbatch | awk '{print $4}')
+# echo "Process raw data"
+# process_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_1_processERA5.txt 1_1_processERA5.sbatch | awk '{print $4}')
+# process_id2=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_2_processPRISM.txt 1_2_processPRISM.sbatch | awk '{print $4}')
+# process_id3=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/1_3_processGHCN.txt 1_3_processGHCN.sbatch | awk '{print $4}')
 
 ##################################
 # 2. Construct Counterfactual Temperature Controls
 echo "Construct counterfactual temperature datasets"
-cftemp_id=$(sbatch --depend=afterok:$process_id:$process_id3 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/2_process_cftemp.txt 2_process_cftemp.sbatch | awk '{print $4}') #
+cftemp_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/2_process_cftemp.txt 2_process_cftemp.sbatch | awk '{print $4}')  # --depend=afterok:$process_id:$process_id3 
 scatter_id=$(sbatch --depend=afterok:$cftemp_id --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/2_2_scatter_plots.txt 2_2_scatter_plots.sbatch | awk '{print $4}') #
 
 ##################################
@@ -82,7 +85,7 @@ echo "Run analyses on the simulation output"
 analysis_id=$(sbatch --depend=afterok:$simulation_id:$simulation_id3 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_2_analysis.txt 3_2_analysis.sbatch | awk '{print $4}') # 
 
 echo "Run simulations with alternative specifications (Figures A1, A2, A3, A5c-d)"
-other_id=$(sbatch --array=1-11 --depend=afterok:$simulation_id:$simulation_id3 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_3_other_sim.txt 3_3_other_sim.sbatch | awk '{print $4}') # 
+other_id=$(sbatch --depend=afterok:$simulation_id:$simulation_id3 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_3_other_sim.txt 3_3_other_sim.sbatch | awk '{print $4}') #  
 
 ##################################
 # 4. Real Outcome Applications

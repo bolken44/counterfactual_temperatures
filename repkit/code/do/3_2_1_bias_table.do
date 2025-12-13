@@ -11,8 +11,6 @@ global repkit "`repkit'"
 global task `task'
 
 do "${repkit}code/do/0_setup.do"
-global pool "/orcd/pool/003/hnaka24/climate/"
-global weather "${pool}processed/"
 
 log using "${log}3_2_analysis/3_2_1_bias_table.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)

@@ -38,6 +38,15 @@ local combo9 "era5 naive year poly4"
 * Experiment (bin over 100)
 local combo10 "era5 naive year 10"
 
+* Celsius
+local combo11 "era5 bayes year 5"
+
+* Monthly
+local combo12 "era5 bayes month 10"
+
+* For emulator (uses avg_temp_day not daytime)
+local combo13 "era5 naive year 5"
+
 * Extract components from the combo based on task
 local source = word("`combo`task''", 1)
 local method = word("`combo`task''", 2)
@@ -52,7 +61,7 @@ Locals for loop
 *********************************/
 local pre_month = "monthly_"
 local method_naive = "realonly parallel(8)"
-local method_year = "trend(year) bayes(none) parallel(8)"
+local method_year = "trend(year) bayes(none) parallel(8)" //
 local method_bayes = "trend(year) bayes(mean)"
 local method_chebyshev = "trend(chebyshev, 4) parallel(8)"
 
@@ -67,11 +76,22 @@ if "`source'" == "era5" & "`binsize'" != "kdd" & "`binsize'" != "poly4" {
 	keep latitude longitude fips year month avg_temp_daytime* avg_temp_day*
 	reshape long avg_temp_daytime avg_temp_day, i(fips year latitude longitude month) j(day)
 	drop latitude longitude
-	drop if avg_temp_daytime == .
+	
+	if `task' == 11 {
+		drop if avg_temp_daytime == .
+		local temp_var "avg_temp_daytime"
+	}
+	else if `task' == 13 {
+		drop if avg_temp_day == .
+		local temp_var "avg_temp_day"
+	}
+	else {
+		drop if avg_temp_daytime == .
 
-	* Convert to Fahrenheit
-	replace avg_temp_daytime = (avg_temp_daytime * 9 / 5) + 32
-	local temp_var "avg_temp_daytime"
+		* Convert to Fahrenheit
+		replace avg_temp_daytime = (avg_temp_daytime * 9 / 5) + 32
+		local temp_var "avg_temp_daytime"
+	}
 }
 
 * PRISM
@@ -92,7 +112,9 @@ foreach year in 1950 1970 {
 
 * GHCN
 if "`source'" == "ghcn" {
-	/* clear
+	/*
+	* only necessary the first time
+	clear
 	forval i = 1/300 {
 		append using "${temp}ghcn_countylevel_1968_2016_`i'.dta"
 	}
@@ -103,7 +125,9 @@ if "`source'" == "ghcn" {
 	save "${intermediate}ghcn_countylevel_1950_2019.dta", replace */
 
 	use "${intermediate}ghcn_countylevel_1950_2019.dta", clear
+	ds
 	count
+	sum tmean
 	local temp_var "tmean"	
 }
 
@@ -114,23 +138,30 @@ if "`binsize'" != "kdd" & "`binsize'" != "poly4" {
 	bysort fips year: egen avg_yearly_temp = mean(`temp_var')
 
 	* Process and save
-	if `task' != 10 {
+	if `task' < 10 | `task' == 12 {
 		cftemp `temp_var' fips month year, binsize(`binsize') lb($lb) ub($ub) time(`level') keep(avg_yearly_temp) `method_`method''
 		save "${temperature}`source'_UScounty_`pre_`level''cftemp_F_bin`binsize'_`method'.dta", replace
 	}
-	else {
+	else if `task' == 10 {
 		cftemp `temp_var' fips month year, binsize(`binsize') lb($lb) ub(100) time(`level') keep(avg_yearly_temp) `method_`method''
 		save "${temperature}`source'_UScounty_`pre_`level''cftemp_F_bin`binsize'_over100_`method'.dta", replace
 	}
-	
+	else if `task' == 11 {
+		cftemp `temp_var' fips month year, binsize(`binsize')lb(-10) ub(35) time(`level') keep(avg_yearly_temp) `method_`method''
+		save "${temperature}`source'_UScounty_`pre_`level''cftemp_C_bin`binsize'_`method'.dta", replace
+	}
+	else if `task' == 13 {
+		cftemp `temp_var' fips month year, binsize(`binsize') lb(-10) ub(35) time(`level') keep(avg_yearly_temp) `method_`method''
+		save "${temperature}`source'_UScounty_`pre_`level''cftemp_C_bin`binsize'_`method'_emu.dta", replace
+	}
 }
 
 /*********************************
 Killing Degree Days (only ERA 5)
 *********************************/
 if "`source'" == "era5" & "`binsize'" == "kdd" {
-	/* use "${intermediate}era5Land_countylevel_1970_2019.dta", clear */
-	use "/orcd/pool/003/hnaka24/climate/data/countyLevel_US_1970_2019.dta", clear
+	use "${intermediate}era5Land_countylevel_1970_2019.dta", clear
+	/* use "/orcd/pool/003/hnaka24/climate/data/countyLevel_US_1970_2019.dta", clear */
 
 	keep latitude longitude fips year month avg_temp_daytime* avg_temp_day*
 	reshape long avg_temp_daytime avg_temp_day, i(fips year latitude longitude month) j(day)
@@ -171,8 +202,8 @@ Carleton et al (2022) Polynomials
 *********************************/
 if "`source'" == "era5" & "`binsize'" == "poly4" {
 
-	/* use "${intermediate}era5Land_countylevel_1970_2019.dta", clear */
-	use "/orcd/pool/003/hnaka24/climate/data/countyLevel_US_1970_2019.dta", clear
+	use "${intermediate}era5Land_countylevel_1970_2019.dta", clear
+	/* use "/orcd/pool/003/hnaka24/climate/data/countyLevel_US_1970_2019.dta", clear */
 
       keep latitude longitude fips year month avg_temp_daytime* avg_temp_day*
       reshape long avg_temp_daytime avg_temp_day, i(fips year latitude longitude month) j(day)

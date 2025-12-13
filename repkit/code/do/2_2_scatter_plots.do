@@ -10,8 +10,8 @@ global data "`data'"
 global repkit "`repkit'"
 
 do "${repkit}code/do/0_setup.do"
-global pool "/orcd/pool/003/hnaka24/climate/"
-global weather "${pool}processed/"
+/* global pool "/orcd/pool/003/hnaka24/climate/"
+global weather "${pool}processed/" */
 
 log using "${log}2_2_scatter_plots/2_2_scatter_plots.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
@@ -40,25 +40,25 @@ global source = "`source'"
 global method = "`method'"
 
 * average temperature (delete later)
-use "${weather}countyannual_US_1970_2019.dta", clear
+/* use "${weather}countyannual_US_1970_2019.dta", clear
 /* use "${weather}countyLevel_USPanel_1970_2019_v2.dta", clear  // this is what Cristine used originally
 replace avg_yearly_temp = (avg_yearly_temp * 9/5) + 32 */
 tempfile `source'_avgtemp
-save ``source'_avgtemp', replace
+save ``source'_avgtemp', replace */
 
 /*********************************
 Prepare Dataset
 *********************************/
-/* use "${temperature}`source'_UScounty_cftemp_F_bin10_year.dta", clear */
-use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear
+use "${temperature}`source'_UScounty_cftemp_F_bin10_year.dta", clear
+/* use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear */
 
 xtset fips year
 drop if year > 2019 | year < 1970
 
 * Merge average temps
-merge m:1 year fips using ``source'_avgtemp'
+/* merge m:1 year fips using ``source'_avgtemp'
 assert _merge == 3
-drop _merge
+drop _merge */
 
 * add state information
 merge m:1 fips using "${data}UScounty_state_crosswalk.dta"

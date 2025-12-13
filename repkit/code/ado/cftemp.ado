@@ -1,9 +1,9 @@
 /*******************************************************************************
-STATA COMMAND cftemp (version 1.0)
+STATA COMMAND cftemp (version 1.1)
 
 AUTHOR: Harufumi Nakazawa
 DATE: March 2025
-LAST UPDATE: September 24, 2025
+LAST UPDATE: October 30, 2025
 ACTION: Generate counterfactual temperatures
 
 This command is a wrapper for the original function, now stored as cftemp_base.ado,
@@ -29,7 +29,7 @@ program define cftemp
 	
 	* If the parallel option is specified, set the specified number of CPUs and run parallelized by the geographic unit
 	if `parallel' > 0 {
-		quietly {
+		/* quietly { */
 			ssc install parallel
 			parallel clean
 			parallel setclusters `parallel'
@@ -42,11 +42,11 @@ program define cftemp
 			sort geo_num
 		
 		parallel, by(geo_num) programs(cftemp_base): cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') keep(`geo_orig' `keep') `realonly' trend(`trend') bayes(`bayes')
-		}
+		/* } */
 	}
 	
 	* If the parallel option is not specified, simply run all geographic units
 	else {
-		cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') `realonly' trend(`trend') bayes(`bayes')
+		cftemp_base `varlist', binsize(`binsize') lb(`lb') ub(`ub') time(`time') `realonly' trend(`trend') keep(`keep') bayes(`bayes')
 	}
 end
