@@ -2,7 +2,7 @@
 #SBATCH --job-name=2_process_cftemp
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --array=7,8,10-13
+#SBATCH --array=13
 
 #SBATCH --mem=150GB
 #SBATCH --time=48:00:00

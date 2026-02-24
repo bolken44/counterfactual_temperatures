@@ -45,7 +45,7 @@ local combo11 "era5 bayes year 5"
 local combo12 "era5 bayes month 10"
 
 * For emulator (uses avg_temp_day not daytime)
-local combo13 "era5 naive year 5"
+local combo13 "emu year year 5"
 
 * Extract components from the combo based on task
 local source = word("`combo`task''", 1)
@@ -61,7 +61,7 @@ Locals for loop
 *********************************/
 local pre_month = "monthly_"
 local method_naive = "realonly parallel(8)"
-local method_year = "trend(year) bayes(none) parallel(8)" //
+local method_year = "trend(year) bayes(none) parallel(8)" // 
 local method_bayes = "trend(year) bayes(mean)"
 local method_chebyshev = "trend(chebyshev, 4) parallel(8)"
 
@@ -81,10 +81,6 @@ if "`source'" == "era5" & "`binsize'" != "kdd" & "`binsize'" != "poly4" {
 		drop if avg_temp_daytime == .
 		local temp_var "avg_temp_daytime"
 	}
-	else if `task' == 13 {
-		drop if avg_temp_day == .
-		local temp_var "avg_temp_day"
-	}
 	else {
 		drop if avg_temp_daytime == .
 
@@ -92,6 +88,28 @@ if "`source'" == "era5" & "`binsize'" != "kdd" & "`binsize'" != "poly4" {
 		replace avg_temp_daytime = (avg_temp_daytime * 9 / 5) + 32
 		local temp_var "avg_temp_daytime"
 	}
+}
+
+if `task' == 13 {
+	use "/orcd/pool/003/hnaka24/climate/data/ERA5_Land_Shahine/era5_daily_all_years_1950_1hr_1deg.dta", clear
+	ds
+
+	keep latitude longitude fips year month avg_temp_day*
+	cap drop avg_temp_daytime*
+	reshape long avg_temp_day, i(fips year latitude longitude month) j(day)
+	drop latitude longitude 
+	
+	local temp_var "avg_temp_day"
+
+	/* use "${intermediate}era5Land_countylevel_1970_2019.dta", clear
+	drop if mod(year, 10) != 0
+	tab year
+	keep latitude longitude fips year month avg_temp_daytime* avg_temp_day*
+	drop avg_temp_daytime*
+	reshape long avg_temp_daytime avg_temp_day, i(fips year latitude longitude month) j(day)
+	drop latitude longitude
+	drop if avg_temp_day == .
+	local temp_var "avg_temp_day" */
 }
 
 * PRISM
@@ -112,7 +130,7 @@ foreach year in 1950 1970 {
 
 * GHCN
 if "`source'" == "ghcn" {
-	/*
+	
 	* only necessary the first time
 	clear
 	forval i = 1/300 {
@@ -122,7 +140,7 @@ if "`source'" == "ghcn" {
 	drop if TMAX == . | TMIN == .
 	gen tmean = (TMAX + TMIN) / 2
 	compress
-	save "${intermediate}ghcn_countylevel_1950_2019.dta", replace */
+	save "${intermediate}ghcn_countylevel_1950_2019.dta", replace
 
 	use "${intermediate}ghcn_countylevel_1950_2019.dta", clear
 	ds
@@ -147,12 +165,15 @@ if "`binsize'" != "kdd" & "`binsize'" != "poly4" {
 		save "${temperature}`source'_UScounty_`pre_`level''cftemp_F_bin`binsize'_over100_`method'.dta", replace
 	}
 	else if `task' == 11 {
-		cftemp `temp_var' fips month year, binsize(`binsize')lb(-10) ub(35) time(`level') keep(avg_yearly_temp) `method_`method''
+		cftemp `temp_var' fips month year, binsize(`binsize') lb(-10) ub(35) time(`level') keep(avg_yearly_temp) `method_`method''
 		save "${temperature}`source'_UScounty_`pre_`level''cftemp_C_bin`binsize'_`method'.dta", replace
 	}
 	else if `task' == 13 {
+		/* cftemp `temp_var' fips month year, binsize(`binsize') lb(-10) ub(35) time(`level') keep(avg_yearly_temp) `method_`method''
+		save "${temperature}era5_UScounty_`pre_`level''cftemp_C_bin`binsize'_`method'_emu_1hr_5deg.dta", replace */
+
 		cftemp `temp_var' fips month year, binsize(`binsize') lb(-10) ub(35) time(`level') keep(avg_yearly_temp) `method_`method''
-		save "${temperature}`source'_UScounty_`pre_`level''cftemp_C_bin`binsize'_`method'_emu.dta", replace
+		save "${temperature}era5_UScounty_`pre_`level''cftemp_C_bin`binsize'_`method'_emu_1950_1hr_1deg.dta", replace
 	}
 }
 

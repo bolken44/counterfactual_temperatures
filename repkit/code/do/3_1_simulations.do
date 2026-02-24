@@ -18,6 +18,11 @@ log using "${log}3_1_simulations/3_1_simulations_`task'.txt", text replace
 display "Current time: " c(current_date) " " c(current_time)
 
 display "`c(tmpdir)'"
+ssc install ftools, replace
+ssc install gtools, replace
+ssc install reghdfe, replace
+ssc install require, replace
+
 /*********************************
 Parallelize temperature data source and control methods
 *********************************/
@@ -40,6 +45,9 @@ local combo23 "era5_C adapt allbins 10"
 local combo24 "era5 sim allbins 10"
 local combo25 "era5 sim allbins 10"
 local combo26 "era5 sim allbins 10"
+
+* Emulator
+local combo27 "era5_C year allbins 5"
 
 * Count items in each dimension for existing permutations
 local n_sources  : word count `sources'
@@ -165,7 +173,7 @@ local row = "`row' \midrule \multirow{8}{*}{`title_`source''}"
 Locals
 *********************************/
 local base_era5 = 1980
-local base_era5_C = 1980
+local base_era5_C = 1960
 local base_prism_1950 = 1960
 local base_prism_1970 = 1980
 local base_ghcn = 1980
@@ -188,7 +196,7 @@ local compare2 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`met
 Main script
 *********************************/
       * Counterfactual temperature controls
-      if "`method'" == "bayes" | "`method'" == "chebyshev" { // "`method'" == "year" |
+      if ("`method'" == "bayes" | "`method'" == "chebyshev") & `task' <= 26 { // "`method'" == "year" |
             use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear
             /* use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear */
       }
@@ -201,6 +209,14 @@ Main script
       * Alternative bin sizes
       else if "`source'" == "era5" & "`binsize'" != "10" {
             use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear
+      }
+      * Emulator
+      else if `task' == 27 {
+            use "${temperature}era5_UScounty_cftemp_C_bin`binsize'_year_emu_1950_6hr_1deg", clear
+            /* use "${temperature}era5_UScounty_cftemp_C_bin5_bayes.dta", clear */
+            /* use "/orcd/pool/003/hnaka24/climate/data/ERA5_Land_Shahine/era5_counts_all.dta", clear */
+            /* use "/orcd/pool/003/hnaka24/climate/data/ERA5_Land_Shahine/era5_counts_all_years.dta", clear */
+            /* drop if year > 2010 */
       }
       * Other data sources
       else {

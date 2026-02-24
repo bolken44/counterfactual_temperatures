@@ -30,7 +30,7 @@ request = {
     "area": [50, -130, 20, -60]
 }
 
-years = [1970, 1980, 1990, 2000, 2010]
+years = [1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020]
 client = cdsapi.Client()
 raw = f'/orcd/pool/003/hnaka24/climate/data/ERA5_Land_Shahine/'
 os.makedirs(raw, exist_ok=True)
