@@ -102,14 +102,17 @@ Run
 *********************************/
 foreach source in era5 { //prism_1950 prism_1970 ghcn 
 
-      foreach method in trends 5year year bayes chebyshev {
+      foreach method in 5year_bayes trends 5year bayes { // trends 5year year chebyshev 
 
             if "`method'" == "bayes" | "`method'" == "chebyshev" {
-                  use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear
+                  use "${temperature}`source'_UScounty_cftemp_F_bin${binsize}_`method'.dta", clear
                   /* use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear */
             }
-            else {
-                  use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear
+            if "`method'" == "5year_bayes" {
+                  use "${temperature}`source'_UScounty_cftemp_F_bin${binsize}_bayes.dta", clear
+            }
+            if "`method'" == "trends" | "`method'" == "5year" | "`method'" == "year" {
+                  use "${temperature}`source'_UScounty_cftemp_F_bin${binsize}_year.dta", clear
                   /* use "${weather}era5_UScounty_1970_2019_cftemp_F.dta", clear */
             }
 
@@ -158,7 +161,7 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
                         use `deschenes_data', clear
 
                         if "`method'" == "year" | "`method'" == "bayes" | "`method'" == "chebyshev" {
-                              /* cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) compare(none)
+                              /* cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) compare1(none)
                               graph export "${figures}real_outcomes/mortality_`outcome'_`source'_`method'_`years'_before.pdf", replace */
 
                               cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) 
@@ -170,13 +173,17 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
                         }
 
                         if "`method'" == "trends" {
-                              cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) compare(trends, fips#c.year)
+                              cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) compare1(trends, fips#c.year)
                               graph export "${figures}real_outcomes/mortality_`outcome'_`source'_trends_`years'.pdf", replace
                         }
                         
                         if "`method'" == "5year" {
-                              cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) compare(5year, county5year year)
+                              cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) compare1(5year, county5year year)
                               graph export "${figures}real_outcomes/mortality_`outcome'_`source'_5year_`years'.pdf", replace
+                        }
+                        if "`method'" == "5year_bayes" {
+                              cftemp_plot mortality_`outcome', $bins aweights(population_`outcome') fe(fips year) cluster(fips) compare1(cftemp) compare2(5year, county5year year)
+                              graph export "${figures}real_outcomes/mortality_`outcome'_`source'_5year_bayes_`years'.pdf", replace
                         }
                   }
 
@@ -194,7 +201,7 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
                   save `reshaped_data'
 
                   if "`method'" == "year" | "`method'" == "bayes" | "`method'" == "chebyshev" {
-                        /* cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county) compare(none)
+                        /* cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county) compare1(none)
                         graph export "${figures}real_outcomes/mortality_pooled_`source'_`method'_`years'_before.pdf", replace */
 
                         cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county)
@@ -206,25 +213,31 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
                   }           
 
                   if "`method'" == "trends" {
-                        cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county) compare(trends, fips#c.year)
+                        cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county) compare1(trends, fips#c.year)
                         graph export "${figures}real_outcomes/mortality_pooled_`source'_trends_`years'.pdf", replace
                   }
 
                   if "`method'" == "5year" {
-                        cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county) compare(5year, agecounty5year year)
+                        cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county) compare1(5year, agecounty5year year)
                         graph export "${figures}real_outcomes/mortality_pooled_`source'_5year_`years'.pdf", replace
+                  }
+
+                  if "`method'" == "5year_bayes" {
+                        cftemp_plot mortality_, $bins aweights(population_) fe(age_county year) cluster(age_county) compare1(cftemp) compare2(5year, agecounty5year year)
+                        graph export "${figures}real_outcomes/mortality_pooled_`source'_5year_bayes_`years'.pdf", replace
                   }
             
             ******************************* Crime (Ranson, 2014) ******************************
 
-                  if "`method'" == "bayes" | "`method'" == "chebyshev" {
-                        use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear
+                  use "${temperature}`source'_UScounty_monthly_cftemp_F_bin${binsize}_bayes.dta", clear
+                  /* if "`method'" == "bayes" | "`method'" == "chebyshev" { // we only need to do bayes for cftemp
+                        use "${temperature}`source'_UScounty_monthly_cftemp_F_bin${binsize}_`method'.dta", clear
                         /* use "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F_`method'.dta", clear */
                   }
                   else {
-                        use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_year.dta", clear
+                        use "${temperature}`source'_UScounty_cftemp_F_bin${binsize}_year.dta", clear
                         /* use "${weather}monthly/era5_monthly_UScounty_1970_2019_cftemp_F.dta", clear */
-                  }
+                  } */
             
                   * Merge outcome data
                   merge 1:1 month year fips using `crimeByFips'
@@ -259,24 +272,29 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
 
                               if "`method'" == "year" | "`method'" == "bayes" | "`method'" == "chebyshev" {
                                     * Compare no correction to cftemp
-                                    cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare(cftemp) method(`reg')
+                                    cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare1(cftemp) method(`reg')
                                     graph export "${figures}real_outcomes/crime_`outcome'_`source'_`method'_`reg'.pdf", replace
 
                                     * Just no correction
-                                    /* cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare(none) method(`reg')
+                                    /* cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare1(none) method(`reg')
                                     graph export "${figures}real_outcomes/crime_`outcome'_`reg'_`source'_`method'.pdf", replace */
                               }
 
                               if "`method'" == "trends" {
                                     * Compare no correction to county-specific trends
-                                    cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare(trends, county_month#c.year) method(`reg')
+                                    cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare1(trends, county_month#c.year) method(`reg')
                                     graph export "${figures}real_outcomes/crime_`outcome'_`source'_trends_`reg'.pdf", replace
                               }
 
                               if "`method'" == "5year" {
                                     * Compare no correction to county-5 year FEs
-                                    cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare(5year, countymonth5year year_month) method(`reg')
+                                    cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare1(5year, countymonth5year year_month) method(`reg')
                                     graph export "${figures}real_outcomes/crime_`outcome'_`source'_5year_`reg'.pdf", replace
+                              }
+
+                              if "`method'" == "5year_bayes" {
+                                    cftemp_plot rate_`outcome', $bins fe(county_month year_month) cluster(fips) compare1(cftemp) compare2(5year, countymonth5year year) method(`reg')
+                                    graph export "${figures}real_outcomes/crime_`outcome'_`source'_5year_bayes_`reg'.pdf", replace
                               }
                         }
                   }
@@ -300,24 +318,29 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
                         foreach outcome in corn wheat soy {
 
                               if "`method'" == "year" | "`method'" == "bayes" | "`method'" == "chebyshev" {
-                                    cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare(cftemp)
+                                    cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare1(cftemp)
                                     graph export "${figures}real_outcomes/crops_`outcome'_`source'_`method'.pdf", replace
 
                                     * Just no correction
-                                    /* cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare(none)
+                                    /* cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare1(none)
                                     graph export "${figures}real_outcomes/crops_`outcome'_`source'_`method'_before.pdf", replace */
                               }
 
                               if "`method'" == "trends" {
                                     * Compare no correction to county-specific trends
-                                    cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare(trends, fips#c.year)
+                                    cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare1(trends, fips#c.year)
                                     graph export "${figures}real_outcomes/crops_`outcome'_`source'_trends.pdf", replace
                               }
 
                               if "`method'" == "5year" {
                                     * Compare no correction to county-5 year FEs
-                                    cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare(5year, county5year year)
+                                    cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare1(5year, county5year year)
                                     graph export "${figures}real_outcomes/crops_`outcome'_`source'_5year.pdf", replace
+                              }
+
+                              if "`method'" == "5year_bayes" {
+                                    cftemp_plot log`outcome'Output, $bins fe(fips year) cluster(fips) compare1(cftemp) compare2(5year, county5year year)
+                                    graph export "${figures}real_outcomes/crops_`outcome'_`source'_5year_bayes.pdf", replace
                               }
                         }
 
@@ -338,17 +361,17 @@ foreach source in era5 { //prism_1950 prism_1970 ghcn
                         foreach outcome in logTotalPop {
                               foreach reg in ols {
                                     if "`method'" == "year" | "`method'" == "bayes" | "`method'" == "chebyshev" {
-                                          cftemp_plot `outcome', $bins fe(fips decade) cluster(fips) compare(cftemp) method(`reg')
+                                          cftemp_plot `outcome', $bins fe(fips decade) cluster(fips) compare1(cftemp) method(`reg')
                                           graph export "${figures}real_outcomes/`outcome'_`source'_`method'_`reg'.pdf", replace
 
                                           * Just no correction
-                                          cftemp_plot `outcome', $bins fe(fips decade) cluster(fips) compare(none) method(`reg')
+                                          cftemp_plot `outcome', $bins fe(fips decade) cluster(fips) compare1(none) method(`reg')
                                           graph export "${figures}real_outcomes/`outcome'_`source'_naive_`reg'.pdf", replace
                                     }
 
                                     if "`method'" == "trends" {
                                           * Compare no correction to county-specific trends
-                                          cftemp_plot `outcome', $bins fe(fips decade) cluster(fips) compare(trends, fips#c.decade) method(`reg')
+                                          cftemp_plot `outcome', $bins fe(fips decade) cluster(fips) compare1(trends, fips#c.decade) method(`reg')
                                           graph export "${figures}real_outcomes/`outcome'_`source'_trends_`reg'.pdf", replace
                                     }
                               }

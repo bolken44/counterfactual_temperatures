@@ -1,7 +1,7 @@
 /*******************************************************************************
 AUTHOR: Harufumi Nakazawa
 DATE: March 2025
-ACTION: Plots up to two regression results together in binned models of temperature
+ACTION: Plots up to three regression results together in binned models of temperature
 
 Requirements
 - Dataset should be created with the cftemp package, so that variables for the realized number of days in each temperature bin
@@ -12,7 +12,7 @@ cap prog drop cftemp_plot
 program define cftemp_plot
 
       ******************************* Syntax
-      syntax varlist(min=1 max=1) [, binsize(real 5) lb(real -10) ub(real 35) omit(real 4) aweights(varlist) fe(string) cluster(varlist) control(string) compare(string) method(string) graph(string) if(string)]
+      syntax varlist(min=1 max=1) [, binsize(real 5) lb(real -10) ub(real 35) omit(real 4) aweights(varlist) fe(string) cluster(varlist) control(string) compare1(string) compare2(string) method(string) graph(string) if(string)]
 
       local yvar  : word 1 of `varlist'
       
@@ -22,17 +22,22 @@ program define cftemp_plot
       local condition ""
       local compare_type ""
       local compare_vars ""
+      local compare2_type ""
+      local compare2_vars ""
       local version_list ""
       local fe_naive ""
       local fe_cftemp ""
       local fe_trends ""
       local title0 ""
       local title1 ""
+      local title2 ""
       local condition0 ""
       local condition1 ""
+      local condition2 ""
       local legendhet ""
       local version_num = .
       local lags = ""
+      local lags_2 = ""
       
       * Method option
       if "`method'" == "" | "`method'" == "ols" {
@@ -52,18 +57,33 @@ program define cftemp_plot
         local condition = "if `if'"
       }
 
-      dis "`compare'"
+      dis "`compare1'"
 
-      * Compare option
-      if "`compare'" != "" & strpos("`compare'", ",") > 0 {    
-            local compare_type = substr("`compare'", 1, strpos("`compare'", ",") - 1)
-            local compare_vars = substr("`compare'", strpos("`compare'", ",") + 1, .)
+      * Compare1 option: parse type and vars when comma present
+      if "`compare1'" != "" & strpos("`compare1'", ",") > 0 {
+            local compare_type = substr("`compare1'", 1, strpos("`compare1'", ",") - 1)
+            local compare_vars = substr("`compare1'", strpos("`compare1'", ",") + 1, .)
       }
       dis "`compare_type'"
       dis "`compare_vars'"
 
+      * compare2 requires compare1
+      if "`compare2'" != "" & ("`compare1'" == "" | "`compare1'" == "none" | "`compare1'" == "naive") {
+            di as err "compare2() may only be specified when compare1() is specified and is not none/naive"
+            exit 198
+      }
+
+      * Parse compare2 when specified
+      if "`compare2'" != "" & strpos("`compare2'", ",") > 0 {
+            local compare2_type = substr("`compare2'", 1, strpos("`compare2'", ",") - 1)
+            local compare2_vars = substr("`compare2'", strpos("`compare2'", ",") + 1, .)
+      }
+      if "`compare2'" != "" & strpos("`compare2'", ",") == 0 {
+            local compare2_type = "`compare2'"
+      }
+
       * Just the 'naive' plot (before plot)
-      if "`compare'" == "none" | "`compare'" == "naive" {
+      if "`compare1'" == "none" | "`compare1'" == "naive" {
             local version_list = "naive"
             local fe_naive = "`fe'"
             local title0 = "No correction"
@@ -71,7 +91,7 @@ program define cftemp_plot
       }
 
       * Naive + cftemp
-      if "`compare'" == "" | "`compare'" == "cftemp" | "`compare_type'" == "cftemp" {
+      if "`compare1'" == "" | "`compare1'" == "cftemp" | "`compare_type'" == "cftemp" {
             local version_list = "naive cftemp"
             local title0 = "No correction"
             local title1 = "With counterfactual correction"
@@ -80,7 +100,7 @@ program define cftemp_plot
             local fe_cftemp = "`fe'"
             local version_num = 2
       }
-      
+
       * Naive + place-specific linear trends
       if "`compare_type'" == "trends" {
             local version_list = "naive trends"
@@ -138,6 +158,37 @@ program define cftemp_plot
             local version_num = 2
       }
 
+      * compare2: add third version (version_num = 3); only when compare2_type is supported
+      if "`compare2'" != "" {
+            * Third version uses _2 suffix for fe and bins to avoid overwriting compare1
+            if "`compare2_type'" == "trends" {
+                  local version_num = 3
+                  local fe_trends_2 = "`compare2_vars' `fe'"
+                  local version_list = "`version_list' trends_2"
+                  local title2 = "With linear trends"
+            }
+            if "`compare2_type'" == "cftemp" {
+                  local version_num = 3
+                  local fe_cftemp_2 = "`fe'"
+                  local version_list = "`version_list' cftemp_2"
+                  local title2 = "With counterfactual correction"
+            }
+            if "`compare2_type'" == "5year" {
+                  local version_num = 3
+                  local fe_5year_2 = "`compare2_vars'"
+                  local version_list = "`version_list' 5year_2"
+                  local title2 = "With County-5 Year FEs"
+            }
+            if "`compare2_type'" == "lags" {
+                  local version_num = 3
+                  local fe_lags_2 = "`fe'"
+                  local version_list = "`version_list' lags_2"
+                  local title2 = "With `compare2_vars' lags"
+                  forval q = 1/`compare2_vars' {
+                        local lags_2 = "`lags_2' lag2_`q'*"
+                  }
+            }
+      }
       ******************************* Binning
       * Bin for below lower bound
       local lb_str = cond(`lb' < 0, "n`=abs(`lb')'", "`lb'") //to create the string "n#" for negative numbers
@@ -181,6 +232,12 @@ program define cftemp_plot
       * Bins for lags
       local lags_bins = "`naive_bins' `lags'"
 
+      * Bins for compare2 (third version)
+      local cftemp_2_bins = "`cftemp_bins'"
+      local trends_2_bins = "`naive_bins'"
+      local 5year_2_bins = "`naive_bins'"
+      local lags_2_bins = "`naive_bins' `lags_2'"
+
       * Number of bins
       local binnum = (`ub' - `lb') / `binsize' + 2 //2 for the extremes
       dis "`binnum'"
@@ -197,6 +254,14 @@ program define cftemp_plot
             foreach var in `naive_bins' {
                   forval q = 1/`compare_vars' {
                         gen lag`q'`var'  = l`q'.`var'
+                  }
+            }
+      }
+      if "`compare2_type'" == "lags" {
+            xtset fips year
+            foreach var in `naive_bins' {
+                  forval q = 1/`compare2_vars' {
+                        gen lag2_`q'`var' = l`q'.`var'
                   }
             }
       }
@@ -251,6 +316,14 @@ program define cftemp_plot
 
             gen coef2_lab = string(round(coef2, 0.01), "%06.2f")
       }
+      if `version_num' == 3 {
+            replace variable1 = variable1 - 0.15
+            replace variable2 = variable2
+            replace variable3 = variable3 + 0.15
+
+            gen coef2_lab = string(round(coef2, 0.01), "%06.2f")
+            gen coef3_lab = string(round(coef3, 0.01), "%06.2f")
+      }
 
       local outcomes = ""
 
@@ -296,7 +369,10 @@ program define cftemp_plot
       } */
 
       if `version_num' == 2 {
-            graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")) (scatter coef2 variable2, color("155 52 58")) (rcap lb2 ub2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white))
+            graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")) (scatter coef2 variable2, color("155 52 58") msymbol(S) msize(medlarge)) (rcap lb2 ub2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white))
+      }
+      if `version_num' == 3 {
+            graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")) (scatter coef2 variable2, color("155 52 58") msymbol(S) msize(medlarge)) (rcap lb2 ub2 variable2, color("155 52 58")) (scatter coef3 variable3, color("0 100 50") msymbol(X) msize(medlarge)) (rcap lb3 ub3 variable3, color("0 100 50")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'" 5 "`title2'") position(6) rows(1) region(lcolor(none)) size(small) `legendhet') `graph' graphregion(color(white))
       }
       if `version_num' == 1 {
             graph tw (scatter coef1 variable1, color("31 88 137")) (rcap lb1 ub1 variable1, color("31 88 137")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white))

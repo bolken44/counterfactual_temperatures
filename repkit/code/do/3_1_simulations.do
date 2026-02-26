@@ -39,15 +39,18 @@ local combo20 "era5 naive allbins 20"
 * Robustness: alternative sources
 local combo21 "prism_1950 naive allbins 10"
 local combo22 "ghcn naive allbins 10"
-local combo23 "era5_C adapt allbins 10"
+local combo23 "era5_C adapt allbins 5"
 
 * Simulation 1 with Counterfactual Control
 local combo24 "era5 sim allbins 10"
 local combo25 "era5 sim allbins 10"
 local combo26 "era5 sim allbins 10"
 
+* 5-year + bayes
+local combo27 "era5 5year_bayes allbins 10"
+
 * Emulator
-local combo27 "era5_C year allbins 5"
+local combo28 "era5_C year allbins 5"
 
 * Count items in each dimension for existing permutations
 local n_sources  : word count `sources'
@@ -173,7 +176,7 @@ local row = "`row' \midrule \multirow{8}{*}{`title_`source''}"
 Locals
 *********************************/
 local base_era5 = 1980
-local base_era5_C = 1960
+local base_era5_C = 1980 // change below for emulator
 local base_prism_1950 = 1960
 local base_prism_1970 = 1980
 local base_ghcn = 1980
@@ -187,18 +190,50 @@ if "`binsize'" == "5" local omit = 10
 if "`binsize'" == "10" local omit = 6
 if "`binsize'" == "20" local omit = 4
 
-* Compare option
-local compare1 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "naive trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "naive stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "naive lags, 3", cond(strpos("`method'", "5year") > 0, "naive 5year, county5year year", "naive sim")))))
-
-local compare2 = cond(strpos("`method'", "naive") > 0, "none", cond(strpos("`method'", "trends") > 0, "naive trends, fips#c.year", cond(strpos("`method'", "stateyearFE") > 0, "naive stateyear, stateyear fips", cond(strpos("`method'", "lag") > 0, "naive lags, 3", cond(strpos("`method'", "5year") > 0, "naive 5year, county5year year", cond(strpos("`method'", "adapt") > 0, "naive het, aboveMedian", "naive cftemp")))))) //different from sim 1 compare! cftemp instead of sim
+* Compare option: compare_sim2 = full option(s) passed to ado in sim 2 (e.g. compare1(...) or compare1(...) compare2(...))
+local compare_sim1 "none"
+local compare_sim2 "compare1(none)"
+if strpos("`method'", "naive") == 0 {
+      if strpos("`method'", "trends") > 0 {
+            local compare_sim1 "naive trends, fips#c.year"
+            local compare_sim2 "compare1(naive trends, fips#c.year)"
+      }
+      else if strpos("`method'", "stateyearFE") > 0 {
+            local compare_sim1 "naive stateyear, stateyear fips"
+            local compare_sim2 "compare1(naive stateyear, stateyear fips)"
+      }
+      else if strpos("`method'", "lag") > 0 {
+            local compare_sim1 "naive lags, 3"
+            local compare_sim2 "compare1(naive lags, 3)"
+      }
+      else if strpos("`method'", "5year_bayes") > 0 {
+            local compare_sim1 "compare1(naive cftemp) compare2(5year, county5year year)"
+            local compare_sim2 "compare1(naive cftemp) compare2(5year, county5year year)"
+      }
+      else if strpos("`method'", "5year") > 0 {
+            local compare_sim1 "naive 5year, county5year year"
+            local compare_sim2 "compare1(naive 5year, county5year year)"
+      }
+      else if strpos("`method'", "adapt") > 0 {
+            local compare_sim1 "naive sim"
+            local compare_sim2 "compare1(naive het, aboveMedian)"
+      }
+      else {
+            local compare_sim1 "naive sim"
+            local compare_sim2 "compare1(naive cftemp)"
+      }
+}
 
 /*********************************
 Main script
 *********************************/
       * Counterfactual temperature controls
-      if ("`method'" == "bayes" | "`method'" == "chebyshev") & `task' <= 26 { // "`method'" == "year" |
-            use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_`method'.dta", clear
+      if "`method'" == "bayes" | "`method'" == "5year_bayes" { // "`method'" == "year" |
+            use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_bayes.dta", clear
             /* use "${weather}era5_UScounty_1970_2019_cftemp_F_`method'.dta", clear */
+      }
+      else if "`method'" == "chebyshev" {
+            use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_chebyshev.dta", clear
       }
       * Reduced Form Methods
       else if "`source'" == "era5" & "`binsize'" == "10" {
@@ -210,28 +245,22 @@ Main script
       else if "`source'" == "era5" & "`binsize'" != "10" {
             use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear
       }
+      * Celsius
+      else if "`source'" == "era5_C" {
+            use "${temperature}era5_UScounty_cftemp_C_bin`binsize'_bayes.dta", clear
+      }
+      * Other data sources (PRISM, GHCN)
+      else if "`source'" == "prism_1950" | "`source'" == "ghcn" {
+            use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear
+      }
       * Emulator
-      else if `task' == 27 {
+      else if `task' == 28 {
+            local base_era5_C = 1960
             use "${temperature}era5_UScounty_cftemp_C_bin`binsize'_year_emu_1950_6hr_1deg", clear
             /* use "${temperature}era5_UScounty_cftemp_C_bin5_bayes.dta", clear */
             /* use "/orcd/pool/003/hnaka24/climate/data/ERA5_Land_Shahine/era5_counts_all.dta", clear */
             /* use "/orcd/pool/003/hnaka24/climate/data/ERA5_Land_Shahine/era5_counts_all_years.dta", clear */
             /* drop if year > 2010 */
-      }
-      * Other data sources
-      else {
-            /* if "`source'" == "ghcn" {
-                  use "${weather}ghcn_UScounty_1968_2016_cftemp.dta", clear
-            }
-            else if "`source'" == "prism_1950" {
-                  use "${weather}schlenker_UScounty_1950_2019_cftemp_F.dta", clear
-            } */
-            if "`source'" == "era5_C" {
-                  use "${temperature}`source'_UScounty_cftemp_C_bin`binsize'_naive.dta", clear
-            }
-            else {
-                  use "${temperature}`source'_UScounty_cftemp_F_bin`binsize'_naive.dta", clear
-            }
       }
 
       xtset fips year
@@ -284,50 +313,53 @@ Main script
             * Linear trends
             if "`source'" == "era5" & "`method'" == "naive" & "`binsize'" == "10" {
                   foreach slope in 1 { //forval slope = -1(1)1
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(none) fe(fips year) cluster(fips)
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare1(none) fe(fips year) cluster(fips)
                   }
             }
             if  "`method'" == "sim" {
                   if `task' == 24 {
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(naive sim) fe(fips year) cluster(fips)
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare1(naive sim) fe(fips year) cluster(fips)
+                        exit
                   }
                   if `task' == 25 {
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(naive sim) fe(fips year) cluster(fips)
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare1(naive sim) fe(fips year) cluster(fips)
+                        exit
                   }
                   if `task' == 26 {
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(naive sim) fe(fips year) cluster(fips) effect(50)
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(1) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare1(naive sim) fe(fips year) cluster(fips) effect(50)
+                        exit
                   }
             }
             
             ********************************* Simulations with real temperature data (sim2)
-            * Naive
+            * Linear version
             if "`source'" == "era5" & "`method'" == "naive" & "`binsize'" == "10" {
                   forval slope = -1(1)1 {
-                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) graph(`graph_`slope'')
+                        cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, `slope') binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips) graph(`graph_`slope'')
                   }
             }
             else if "`source'" == "era5_C" {
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(5) lb(-10) ub(35) omit(8) compare(`compare2') fe(fips year) cluster(fips)
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(5) lb(-10) ub(35) omit(8) `compare_sim2' fe(fips year) cluster(fips)
             }
             else { //everything including adaptation
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) //graph(`graph_1')
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips) //graph(`graph_1')
             }
 
             * Extra spec (omit 7th bin) for adaptation
-            if strpos("`method'", "adapt") > 0 {
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(7) compare(`compare2') fe(fips year) cluster(fips)
+            if strpos("`method'", "adapt") > 0 & "`source'" != "era5_C" {
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(7) `compare_sim2' fe(fips year) cluster(fips)
             }
 
             * Everything except adaptation
             if "`source'" == "era5" & strpos("`method'", "adapt") <= 0 & "`binsize'" == "10" {
                   * Quadratic trends
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips)
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips)
 
                   * Cubic trends
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips)
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips)
 
                   * Linear trend, real effect of 5 on both extreme bins
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) effect(5)
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips) effect(5)
             }
       }
 
@@ -338,14 +370,14 @@ Main script
             
             ********************************* Simulations with real temperature data (sim2)
             * Linear trends + bias table
-            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) extreme bias
+            cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(lin, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips) extreme bias
 
             if strpos("`method'", "adapt") <= 0 {
                   * Quadratic trends
-                  /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) extreme
+                  /* cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(quad, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips) extreme
 
                   * Cubic trends
-                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') compare(`compare2') fe(fips year) cluster(fips) extreme */
+                  cftemp_sim baselinePeriodTemp fips year, simulate(1000) option(2) outcome(cubic, 1) binsize(`binsize') lb($lb) ub($ub) omit(`omit') `compare_sim2' fe(fips year) cluster(fips) extreme */
             }
       }
 

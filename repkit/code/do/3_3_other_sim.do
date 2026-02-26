@@ -39,6 +39,7 @@ local outcomes "more65 violent nonViolent corn soy wheat" //allAges less1 1_44 4
 if `task' > 6 {
       local j = `task' - 6
       local outcome = word("`outcomes'", `j')
+      local source = "era5"
       di "Outcome: `outcome'"
 }
 

@@ -12,7 +12,7 @@ cap prog drop cftemp_sim
 program define cftemp_sim
 
       ******************************* Syntax
-      syntax varlist(min=3 max=3) [, simulate(real 1000) option(real 2) outcome(string) binsize(real 5) lb(real -10) ub(real 35) omit(real 4) aweights(varlist) fe(string) cluster(varlist) control(string) compare(string) method(string) graph(string) if(string) extreme bias effect(real 0)]
+      syntax varlist(min=3 max=3) [, simulate(real 1000) option(real 2) outcome(string) binsize(real 5) lb(real -10) ub(real 35) omit(real 4) aweights(varlist) fe(string) cluster(varlist) control(string) compare1(string) compare2(string) method(string) graph(string) if(string) extreme bias effect(real 0)]
 
       ** Parse variables from syntax. The variables must be in this order
       local temp  : word 1 of `varlist'
@@ -25,15 +25,20 @@ program define cftemp_sim
       local condition ""
       local compare_type ""
       local compare_vars ""
+      local compare2_type ""
+      local compare2_vars ""
       local version_list ""
       local naive_fe ""
       local title0 ""
       local title1 ""
+      local title2 ""
       local condition0 ""
       local condition1 ""
+      local condition2 ""
       local legendhet ""
       local version_num = .
       local lags = ""
+      local lags_2 = ""
       local realeffect = ""
       local residualize = ""
       local coef_bins = ""
@@ -81,17 +86,31 @@ program define cftemp_sim
       * Extreme option
       local binform = cond("`extreme'" == "", "allbins", "extreme")
 
-      dis "`compare'"
+      dis "`compare1'"
 
-      * Compare option
-      if "`compare'" != "" & strpos("`compare'", ",") > 0 {    
-            local compare_type = substr("`compare'", 1, strpos("`compare'", ",") - 1)
-            local compare_vars = substr("`compare'", strpos("`compare'", ",") + 1, .)
+      * Compare1 option: parse type and vars when comma present
+      if "`compare1'" != "" & strpos("`compare1'", ",") > 0 {
+            local compare_type = substr("`compare1'", 1, strpos("`compare1'", ",") - 1)
+            local compare_vars = substr("`compare1'", strpos("`compare1'", ",") + 1, .)
       }
       dis "`compare_type'"
       dis "`compare_vars'"
 
-      if "`compare'" == "none" | "`compare'" == "naive" {
+      * compare2 requires compare1 (and compare1 must be a two-version type)
+      if "`compare2'" != "" & ("`compare1'" == "" | "`compare1'" == "none" | "`compare1'" == "naive") {
+            di as err "compare2() may only be specified when compare1() is specified and is not none/naive"
+            exit 198
+      }
+
+      * Parse compare2 when specified
+      if "`compare2'" != "" & strpos("`compare2'", ",") > 0 {
+            local compare2_type = substr("`compare2'", 1, strpos("`compare2'", ",") - 1)
+            local compare2_vars = substr("`compare2'", strpos("`compare2'", ",") + 1, .)
+      }
+      dis "`compare2_type'"
+      dis "`compare2_vars'"
+
+      if "`compare1'" == "none" | "`compare1'" == "naive" {
             local version_list = cond("`extreme'" == "", "naive", "extreme_naive")
             local naive_fe = "`fe'"
             local extreme_naive_fe = "`fe'"
@@ -99,7 +118,7 @@ program define cftemp_sim
             local version_num = 1
       }
 
-      if "`compare'" == "cftemp" | "`compare_type'" == "cftemp" | "`compare'" == "sim" | "`compare_type'" == "sim" {
+      if "`compare1'" == "cftemp" | "`compare_type'" == "cftemp" | "`compare1'" == "sim" | "`compare_type'" == "sim" {
             local version_list = cond("`extreme'" == "", "cftemp", "extreme_cftemp")
             local cftemp_fe = "`fe'"
             local extreme_cftemp_fe = "`fe'"
@@ -108,7 +127,7 @@ program define cftemp_sim
             local version_num = 1
       }
 
-      if "`compare'" == "trends" | "`compare_type'" == "trends" {
+      if "`compare1'" == "trends" | "`compare_type'" == "trends" {
             local version_list = cond("`extreme'" == "", "trends", "extreme_trends")
             local trends_fe = "`compare_vars' `fe'"
             local extreme_trends_fe = "`compare_vars' `fe'"
@@ -147,7 +166,7 @@ program define cftemp_sim
             local version_num = 1
       }
 
-      if "`compare'" == "naive cftemp" | "`compare_type'" == "naive cftemp" {
+      if "`compare1'" == "naive cftemp" | "`compare_type'" == "naive cftemp" {
             local version_list = cond("`extreme'" == "", "naive cftemp", "extreme_naive extreme_cftemp")
             local title0 = "No correction"
             local title1 = "With counterfactual correction"
@@ -159,7 +178,7 @@ program define cftemp_sim
             local extreme_cftemp_fe = "`fe'"
       }
 
-      if "`compare'" == "naive sim" | "`compare_type'" == "naive sim" { // sim 1
+      if "`compare1'" == "naive sim" | "`compare_type'" == "naive sim" { // sim 1
             local version_list = cond("`extreme'" == "", "naive cftemp", "extreme_naive extreme_cftemp")
             local title0 = "No correction"
             local title1 = "With counterfactual correction"
@@ -249,8 +268,48 @@ program define cftemp_sim
             local extreme_cftemp_fe = "`fe'"
       }
 
+      * compare2: add third version (version_num = 3); only when compare2_type is supported
+      if "`compare2'" != "" & `version_num' == 2 {
+            if "`compare2_type'" == "trends" | "`compare2'" == "trends" {
+                  local version_num = 3
+                  local trends_2_fe = "`compare2_vars' `fe'"
+                  local extreme_trends_2_fe = "`compare2_vars' `fe'"
+                  local version_list = cond("`extreme'" == "", "`version_list' trends_2", "`version_list' extreme_trends_2")
+                  local title2 = "With linear trends"
+            }
+            if "`compare2_type'" == "cftemp" | "`compare2_type'" == "sim" | "`compare2'" == "sim" | "`compare2_type'" == "cftemp" {
+                  local version_num = 3
+                  local cftemp_2_fe = "`fe'"
+                  local extreme_cftemp_2_fe = "`fe'"
+                  local version_list = cond("`extreme'" == "", "`version_list' cftemp_2", "`version_list' extreme_cftemp_2")
+                  local title2 = "With counterfactual correction"
+            }
+            if "`compare2_type'" == "5year" | "`compare2'" == "5year" {
+                  local version_num = 3
+                  local 5year_2_fe = "`compare2_vars'"
+                  local extreme_5year_2_fe = "`compare2_vars'"
+                  local version_list = cond("`extreme'" == "", "`version_list' 5year_2", "`version_list' extreme_5year_2")
+                  local title2 = "With County-5 Year FEs"
+            }
+            if "`compare2_type'" == "stateyear" | "`compare2'" == "stateyear" {
+                  local version_num = 3
+                  local stateyear_2_fe = "`compare2_vars'"
+                  local extreme_stateyear_2_fe = "`compare2_vars'"
+                  local version_list = cond("`extreme'" == "", "`version_list' stateyear_2", "`version_list' extreme_stateyear_2")
+                  local title2 = "With State-Year FEs"
+            }
+            if "`compare2_type'" == "lags" | "`compare2'" == "lags" {
+                  local version_num = 3
+                  local lags_2_fe = "`fe'"
+                  local extreme_lags_2_fe = "`fe'"
+                  local version_list = cond("`extreme'" == "", "`version_list' lags_2", "`version_list' extreme_lags_2")
+                  local title2 = "With `compare2_vars' lags"
+            }
+      }
+
       dis "`condition0'"
       dis "`condition1'"
+      dis "`version_list'"
 
       ******************************* Binning
       * Bin for below lower bound
@@ -304,6 +363,16 @@ program define cftemp_sim
       * Bins are the same as naive for county-5 year FEs
       local 5year_bins = "`naive_bins'"
       local extreme_5year_bins = "`extreme_naive_bins'"
+
+      * Bins for compare2 (third version)
+      local trends_2_bins = "`naive_bins'"
+      local extreme_trends_2_bins = "`extreme_naive_bins'"
+      local cftemp_2_bins = "`cftemp_bins'"
+      local extreme_cftemp_2_bins = "`extreme_cftemp_bins'"
+      local 5year_2_bins = "`naive_bins'"
+      local extreme_5year_2_bins = "`extreme_naive_bins'"
+      local stateyear_2_bins = "`naive_bins'"
+      local extreme_stateyear_2_bins = "`extreme_naive_bins'"
 
       * Number of bins
       local binnum = (`ub' - `lb') / `binsize' + 2 //2 for the extremes
@@ -368,7 +437,7 @@ program define cftemp_sim
       }
 
       * generate lags
-      if strpos("`compare'", "lags") > 0 {
+      if strpos("`compare1'", "lags") > 0 {
             local coef_bins = cond("`extreme'" == "", "`naive_bins'", "`extreme_naive_bins'")
             foreach var in `coef_bins' {
                   forval q = 1/`compare_vars' {
@@ -384,6 +453,19 @@ program define cftemp_sim
             * Bins for lags
             local lags_bins = "`naive_bins' `lags'"
             local extreme_lags_bins = "`extreme_naive_bins' `lags'"
+      }
+      if "`compare2_type'" == "lags" {
+            local coef_bins = cond("`extreme'" == "", "`naive_bins'", "`extreme_naive_bins'")
+            foreach var in `coef_bins' {
+                  forval q = 1/`compare2_vars' {
+                        gen lag2_`q'`var' = l`q'.`var'
+                  }
+            }
+            forval q = 1/`compare2_vars' {
+                  local lags_2 = "`lags_2' lag2_`q'*"
+            }
+            local lags_2_bins = "`naive_bins' `lags_2'"
+            local extreme_lags_2_bins = "`extreme_naive_bins' `lags_2'"
       }
 
       * loop through versions and lists
@@ -440,7 +522,7 @@ program define cftemp_sim
                               drop check
 
                               * Simulate expected temperature bins
-                              if strpos("`compare'", "sim") > 0 {
+                              if strpos("`compare1'", "sim") > 0 {
                                     drop exp_*
 
                                     cap gen exp_under_`lb_str' = 0
@@ -501,7 +583,7 @@ program define cftemp_sim
                         save `save', replace
 
                         //residualize
-                        local residualize = cond(strpos("`compare'", "cftemp") > 0, "`extreme_cftemp'", cond(strpos("`compare'", "lags") > 0, "`lags'", ""))
+                        local residualize = cond(strpos("`compare1'", "cftemp") > 0, "`extreme_cftemp'", cond(strpos("`compare1'", "lags") > 0, "`lags'", ""))
                         dis "`residualize'"
 
                         reghdfe random_Y `residualize' `control' `condition`restrict'', absorb(``version'_fe') cluster(`geo') resid(resid)
@@ -576,7 +658,7 @@ program define cftemp_sim
                   global coef_`i'_Y_ci = "[${coef_p25_`i'_Y}, ${coef_p975_`i'_Y}]"
                   
                   // exclude Y variables from lags
-                  if strpos("`compare'", "lags") > 0 {
+                  if strpos("`compare1'", "lags") > 0 {
                         local lags = ""
                         forval q = 1/`compare_vars' {
                               local lags = "`lags' lag`q'*"
@@ -591,7 +673,7 @@ program define cftemp_sim
                         save `save', replace
 
                         // residualize
-                        local residualize = cond(strpos("`compare'", "cftemp") > 0, "`extreme_cftemp'", cond(strpos("`compare'", "lags") > 0, "`lags'", ""))
+                        local residualize = cond(strpos("`compare1'", "cftemp") > 0, "`extreme_cftemp'", cond(strpos("`compare1'", "lags") > 0, "`lags'", ""))
 
                         reghdfe real_`bin' `residualize' `control' `condition`restrict'', absorb(``version'_fe') cluster(`geo') resid(resid)
 
@@ -741,7 +823,15 @@ program define cftemp_sim
 
                   /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
 
-                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58")) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white) lcolor(none))
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58") msymbol(S) msize(medlarge)) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white) lcolor(none))
+            }
+
+            if `version_num' == 3 {
+                  replace variable1 = variable1 - 0.15
+                  replace variable2 = variable2
+                  replace variable3 = variable3 + 0.15
+
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58") msymbol(S) msize(medlarge)) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")) (scatter coef_p500_3 variable3, color("0 100 50") msymbol(X) msize(medlarge)) (rcap coef_p25_3 coef_p975_3 variable3, color("0 100 50")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'" 5 "`title2'") position(6) rows(1) region(lcolor(none)) size(small) `legendhet') `graph' graphregion(color(white) lcolor(none))
             }
 
             if `version_num' == 1 {
