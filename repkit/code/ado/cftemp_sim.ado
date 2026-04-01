@@ -823,7 +823,7 @@ program define cftemp_sim
 
                   /* gen coef2_lab = string(round(coef_2, 0.01), "%06.2f") */
 
-                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58") msymbol(S) msize(medlarge)) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white) lcolor(none))
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58") msymbol(S)) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'") position(6) rows(1) region(lcolor(none)) `legendhet') `graph' graphregion(color(white) lcolor(none))
             }
 
             if `version_num' == 3 {
@@ -831,7 +831,7 @@ program define cftemp_sim
                   replace variable2 = variable2
                   replace variable3 = variable3 + 0.15
 
-                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58") msymbol(S) msize(medlarge)) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")) (scatter coef_p500_3 variable3, color("0 100 50") msymbol(X) msize(medlarge)) (rcap coef_p25_3 coef_p975_3 variable3, color("0 100 50")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'" 5 "`title2'") position(6) rows(1) region(lcolor(none)) size(small) `legendhet') `graph' graphregion(color(white) lcolor(none))
+                  graph tw (scatter coef_p500_1 variable1, color("31 88 137")) (rcap coef_p25_1 coef_p975_1 variable1, color("31 88 137")) (scatter coef_p500_2 variable2, color("155 52 58") msymbol(S)) (rcap coef_p25_2 coef_p975_2 variable2, color("155 52 58")) (scatter coef_p500_3 variable3, color("0 100 50") msymbol(X) msize(medlarge)) (rcap coef_p25_3 coef_p975_3 variable3, color("0 100 50")), xlabel(`bin_labels', labsize(small) nogrid) xtitle("") yline(0, lpattern(dash) lcolor(red)) ylabel(`ylabels', angle(h) nogrid) legend(order(1 "`title0'" 3 "`title1'" 5 "`title2'") position(6) rows(1) region(lcolor(none)) size(small) `legendhet') `graph' graphregion(color(white) lcolor(none))
             }
 
             if `version_num' == 1 {

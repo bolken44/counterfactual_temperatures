@@ -71,24 +71,24 @@ export mailuser=${SLURM_MAIL_USER:-user@example.com}
 ##################################
 # 2. Construct Counterfactual Temperature Controls
 echo "Construct counterfactual temperature datasets"
-cftemp_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/2_process_cftemp.txt 2_process_cftemp.sbatch | awk '{print $4}')  # --depend=afterok:$process_id:$process_id3 
-scatter_id=$(sbatch --depend=afterok:$cftemp_id --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/2_2_scatter_plots.txt 2_2_scatter_plots.sbatch | awk '{print $4}') #
+# cftemp_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/2_process_cftemp.txt 2_process_cftemp.sbatch | awk '{print $4}')  # --depend=afterok:$process_id:$process_id3 
+# scatter_id=$(sbatch --depend=afterok:$cftemp_id --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/2_2_scatter_plots.txt 2_2_scatter_plots.sbatch | awk '{print $4}') #
 
 ##################################
 # 3. Simulations
 echo "Run simulations (Figures 4, 5, 6c, 7, 9)"
-simulation_id=$(sbatch --array=1 --depend=afterok:$cftemp_id  --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') # 
-simulation_id2=$(sbatch --array=2-18%3 --export=ALL --depend=afterok:$cftemp_id --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') # 
-simulation_id3=$(sbatch --array=19-27%3 --depend=afterok:$cftemp_id --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') #  --depend=afterok:$simulation_id2
+simulation_id=$(sbatch --array=1 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') # --depend=afterok:$cftemp_id  
+simulation_id2=$(sbatch --array=2-18%3 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') # --depend=afterok:$cftemp_id 
+simulation_id3=$(sbatch --array=19-27%3 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') #  --depend=afterok:$simulation_id2 --depend=afterok:$cftemp_id 
 # simulation_emu=$(sbatch --array=28 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_1_simulations.txt 3_1_simulations.sbatch | awk '{print $4}') # --depend=afterok:$cftemp_id 
 
 echo "Run analyses on the simulation output"
 analysis_id=$(sbatch --depend=afterok:$simulation_id:$simulation_id3 --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_2_analysis.txt 3_2_analysis.sbatch | awk '{print $4}') # 
 
 echo "Run simulations with alternative specifications (Figures A1, A2, A3, A5c-d)"
-other_id=$(sbatch --export=ALL --depend=afterok:$cftemp_id --partition=$partition --mail-user=$mailuser --output=../../log/3_3_other_sim.txt 3_3_other_sim.sbatch | awk '{print $4}') #  --depend=afterok:$simulation_id:$simulation_id3 
+other_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/3_3_other_sim.txt 3_3_other_sim.sbatch | awk '{print $4}') #  --depend=afterok:$simulation_id:$simulation_id3 --depend=afterok:$cftemp_id 
 
 ##################################
 # 4. Real Outcome Applications
 echo "Run regressions with real outcome data (Figures 11, A11-A15)"
-real_id=$(sbatch --export=ALL --depend=afterok:$cftemp_id --partition=$partition --mail-user=$mailuser --output=../../log/4_real_outcomes.txt 4_real_outcomes.sbatch | awk '{print $4}') #  
+real_id=$(sbatch --export=ALL --partition=$partition --mail-user=$mailuser --output=../../log/4_real_outcomes.txt 4_real_outcomes.sbatch | awk '{print $4}') #  --depend=afterok:$cftemp_id 
