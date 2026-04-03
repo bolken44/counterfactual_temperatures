@@ -1,6 +1,6 @@
 # Stata command `cftemp`
 
-version: 1.1 (October 30, 2025)
+version: 1.2 (April 2026)
 
 The `cftemp` program takes a panel dataset with some fine temporal variation in temperature (say, place-day level) and transforms it to an aggregated panel dataset (say, place-year level) with variables holding the *realized* and *expected* number of days that fall into each temperature bin, the bounds and interval of which are specified by the user.
 
@@ -90,6 +90,10 @@ The variables holding expected (counterfactual) frequencies will be named as:
 - `exp_under_<lower bound>` and `exp_over_<upper bound>` for the edge bins
 - `exp_<bin lower bound>_<bin upper bound>` for all other bins
 
+- `avg_yearly_cftemp` - The average yearly counterfactual temperature for each geographic unit and time period.
+
 
 ## Edit History
-- version 1.1: The counterfactual binning did not work unless the trend option was specified. Updated to make trend(time2) truly the default.
+- version 1.0: Initial release (September 2025).
+- version 1.1: Made trend(time2) the default; previously the counterfactual binning did not work unless the trend option was specified (October 2025).
+- version 1.2: Added avg_yearly_cftemp output variable, improved keep() variable ordering (April 2026).

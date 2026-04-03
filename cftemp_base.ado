@@ -1,9 +1,10 @@
 /*******************************************************************************
-STATA COMMAND cftemp (version 1.0)
+STATA COMMAND cftemp (version 1.2)
 
 AUTHOR: Harufumi Nakazawa
 DATE: March 2025
-LAST UPDATE: September 24, 2025
+LAST UPDATE: April 3, 2026
+CHANGES IN v1.2: Added avg_yearly_cftemp output variable; improved keep() variable ordering
 ACTION: Generate counterfactual temperatures
 
 This file and cftemp.ado should be stored in the same folder, and the folder path should be stored in a global `path`:
@@ -22,7 +23,7 @@ program define cftemp_base
     * Catch the syntax.
     syntax varlist(min=4 max=4) [, binsize(real 5) lb(real -10) ub(real 35) time(varlist) keep(varlist) trend(string) bayes(string) realonly]
     
-	quietly {
+	/* quietly { */
 		
 		** Parse variables from syntax. Variables must be in this order
 		local temp  : word 1 of `varlist'
@@ -182,7 +183,7 @@ program define cftemp_base
 		** Counterfactual Temperature Bins
 		if "`realonly'" == "" {
 			* Set of variables to return
-			local return_list = "real_* exp_*"
+			local return_list = "real_* exp_* avg_yearly_cftemp"
 
 			*******************************************************************************/
 			*** The Regression
@@ -280,11 +281,12 @@ program define cftemp_base
 			*** The Binning
 
 			* Loop through the trend variable and move the aggregate distribution one slope at a time
-			/* e.g., if the trend variable is time2, for each `geo' `agg_time' (e.g., fip-month), 
+			/* e.g., if the trend variable is time2, for each `geo' `agg_time' (e.g., fips if the return 
+			dataset is at the year level or fip-month if the return dataset is at the month level), 
 			all daily observations of detrended temperatures are aggregated to make one big empirical 
 			distribution of temperatures in that month for that location. Then we count the number of observations 
 			that fall into each bin - it has not been scaled yet to add up correctly to the number
-			of days in the level to return the dataset (year/month). At the end of the loop, add
+			of days in the level to return the dataset (year/month). At the beginning of the loop, add
 			the slope back to detrendedTemp for all observations ONCE to shift the aggregate distribution
 			for the next value of time2. The procedure for naming the bins is the same as explained for 
 			realized temperatures above. */
@@ -333,6 +335,12 @@ program define cftemp_base
 				cap gen exp_over_`ub_str' = .
 				bysort `geo' `agg_time': egen temp_sum = total(retrendedTemp >= `ub' & retrendedTemp != .)
 				replace exp_over_`ub_str' = temp_sum if event_`time2' == `y'
+				drop temp_sum
+
+				* Average counterfactual temperature of the `agg_time' level
+				cap gen avg_yearly_cftemp = .
+				bysort `geo' `agg_time': egen temp_sum = mean(retrendedTemp)
+				replace avg_yearly_cftemp = temp_sum if event_`time2' == `y'
 
 				* Drop variables for next iteration of loop
 				drop temp_sum retrendedTemp
@@ -355,9 +363,9 @@ program define cftemp_base
 		geographic unit - return time level are redundant. Drop those duplicates. */
 		keep `geo_orig' `agg_time' `time2' `return_list' `keep'
 		duplicates drop
-		order `geo_orig' `time2' `agg_time', first
+		order `geo_orig' `time2' `agg_time' `keep', first
 		sort `geo_orig' `time2' `agg_time'
-	}
+	/* } */
 	
 	*******************************************************************************/
 	* Display notification for completion
